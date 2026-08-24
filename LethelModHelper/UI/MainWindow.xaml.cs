@@ -22,28 +22,9 @@ namespace LethelModHelper
         private ScriptParser _scriptParser = new();
         private readonly FileService _fileService;
         private readonly LocaleService _localeService;
+        private readonly ModDataService _dataService;
         private string? _currentFilePath;
         
-
-        // JSON 序列化选项
-        private static readonly JsonSerializerOptions SaveJsonOptions = new()
-        {
-            WriteIndented = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
-
-        private static readonly JsonSerializerOptions LocaleReadOptions = new()
-        {
-            PropertyNameCaseInsensitive = true,
-            ReadCommentHandling = JsonCommentHandling.Skip,
-            AllowTrailingCommas = true
-        };
-
-        private static readonly JsonSerializerOptions LocaleWriteOptions = new()
-        {
-            WriteIndented = true,
-            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-        };
 
         // 罪人名称映射
         private static readonly Dictionary<int, string> SinnerNames = new()
@@ -66,8 +47,8 @@ namespace LethelModHelper
             _scanner.FileParseFailed += OnFileParseFailed;
 
             _fileService = new FileService();
-            _localeService = new LocaleService(
-        _fileService);
+            _localeService = new LocaleService(_fileService);
+            _dataService = new ModDataService(_fileService);
         }
 
         #endregion
@@ -753,7 +734,7 @@ namespace LethelModHelper
             {
                 if (!TryGetCurrentFilePath(out var currentFilePath)) return;
 
-                SaveJsonToFile(data, currentFilePath);
+                _dataService.Save(currentFilePath, data);
                 FooterStatusTextBlock.Text = $"✅ 已保存: {Path.GetFileName(currentFilePath)}";
                 RefreshCurrentView();
                 MessageBox.Show($"{dataTypeName}保存成功！", "提示",
@@ -773,20 +754,6 @@ namespace LethelModHelper
             MessageBox.Show("找不到当前文件的路径", "错误",
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return false;
-        }
-
-/// <summary>
-        /// 保存数据到指定文件
-        /// </summary>
-        private void SaveJsonToFile<T>(T data, string filePath)
-        {
-            WriteJsonToFile(data, filePath, SaveJsonOptions);
-        }
-
-        private void WriteJsonToFile<T>(T data, string filePath, JsonSerializerOptions options)
-        {
-            var json = JsonSerializer.Serialize(data, options);
-            _localeService.SaveLocale(filePath, json);
         }
 
         #endregion
@@ -1043,35 +1010,25 @@ namespace LethelModHelper
 
         private bool DeleteEntryFromFile(string filePath, string entryId, Type entryType)
         {
-            var jsonContent = _localeService.LoadLocale(filePath);
-
             if (entryType == typeof(BuffLocaleEntry))
             {
-                var data = JsonSerializer.Deserialize<Dictionary<string, BuffLocaleEntry>>(
-                    jsonContent, LocaleReadOptions);
-                if (data == null || !data.Remove(entryId)) return false;
+                var data = _dataService.LoadLocaleDictionary<BuffLocaleEntry>(filePath);
+                if (!data.Remove(entryId)) return false;
 
-                SaveLocaleData(data, filePath);
+                _dataService.SaveLocaleDictionary(filePath, data);
                 return true;
             }
 
             if (entryType == typeof(KeywordLocaleEntry))
             {
-                var data = JsonSerializer.Deserialize<Dictionary<string, KeywordLocaleEntry>>(
-                    jsonContent, LocaleReadOptions);
-                if (data == null || !data.Remove(entryId)) return false;
+                var data = _dataService.LoadLocaleDictionary<KeywordLocaleEntry>(filePath);
+                if (!data.Remove(entryId)) return false;
 
-                SaveLocaleData(data, filePath);
+                _dataService.SaveLocaleDictionary(filePath, data);
                 return true;
             }
 
             return false;
-        }
-
-        private void SaveLocaleData<T>(Dictionary<string, T> data, string filePath)
-        {
-            var json = JsonSerializer.Serialize(data, LocaleWriteOptions);
-            _localeService.SaveLocale(filePath, json);
         }
 
         private void RefreshAfterDelete()
@@ -1157,7 +1114,7 @@ namespace LethelModHelper
         }
             };
 
-            SaveJsonToFile(buffData, filePath);
+            _dataService.Save(filePath, buffData);
         }
 
         private void UpdateLocaleFile(string buffFolderPath, string buffId,
@@ -1180,32 +1137,20 @@ namespace LethelModHelper
 
             if (entryType == typeof(BuffLocaleEntry))
             {
-                var data = LoadOrCreateLocaleData<BuffLocaleEntry>(targetFile);
+                var data = _dataService.LoadLocaleDictionary<BuffLocaleEntry>(targetFile);
                 data[buffId] = CreateBuffLocaleEntry(buffId, buffName, buffDesc);
-                SaveLocaleData(data, targetFile);
+                _dataService.SaveLocaleDictionary(targetFile, data);
                 LocaleCache.BuffLocaleMap = data;
                 LocaleCache.CurrentBuffLocaleFilePath = targetFile;
             }
             else
             {
-                var data = LoadOrCreateLocaleData<KeywordLocaleEntry>(targetFile);
+                var data = _dataService.LoadLocaleDictionary<KeywordLocaleEntry>(targetFile);
                 data[buffId] = CreateKeywordLocaleEntry(buffId, buffName, buffDesc);
-                SaveLocaleData(data, targetFile);
+                _dataService.SaveLocaleDictionary(targetFile, data);
                 LocaleCache.KeywordLocaleMap = data;
                 LocaleCache.CurrentKeywordLocaleFilePath = targetFile;
             }
-        }
-
-        private Dictionary<string, T> LoadOrCreateLocaleData<T>(string filePath)
-        {
-            if (!_fileService.Exists(filePath))
-            {
-                return new Dictionary<string, T>();
-            }
-
-            var jsonContent = _localeService.LoadLocale(filePath);
-            return JsonSerializer.Deserialize<Dictionary<string, T>>(jsonContent, LocaleReadOptions)
-                   ?? new Dictionary<string, T>();
         }
 
         private BuffLocaleEntry CreateBuffLocaleEntry(string buffId, string buffName, string buffDesc)
