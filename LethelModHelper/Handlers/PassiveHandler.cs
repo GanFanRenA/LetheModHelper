@@ -1,4 +1,4 @@
-using LethelModHelper.Models;
+using LethelModHelper.Core.Models;
 
 namespace LethelModHelper.Handlers
 {

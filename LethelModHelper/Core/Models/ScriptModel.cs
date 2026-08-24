@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace LethelModHelper.Models
+namespace LethelModHelper.Core.Models
 {
     /// <summary>
     /// 脚本解析结果

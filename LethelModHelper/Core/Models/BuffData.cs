@@ -1,6 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using LethelModHelper.Core.Models;
+using System.Collections.Generic;
 
-namespace LethelModHelper.Models
+namespace LethelModHelper.Core.Models
 {
     /// <summary>
     /// Buff 数据（增益/减益）

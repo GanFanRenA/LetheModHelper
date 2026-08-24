@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace LethelModHelper.Models
+namespace LethelModHelper.Core.Models
 {
     /// <summary>
     /// 标记字段为可编辑

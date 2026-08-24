@@ -1,10 +1,9 @@
-﻿using LethelModHelper.Models;
+﻿using LethelModHelper.Core.Models;
 using LethelModHelper.Services;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
-
 namespace LethelModHelper.Handlers
 {
     /// <summary>

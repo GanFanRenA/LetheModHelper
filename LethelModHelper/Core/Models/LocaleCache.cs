@@ -3,7 +3,7 @@ using System.IO;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
-namespace LethelModHelper.Models
+namespace LethelModHelper.Core.Models
 {
     public static class LocaleCache
     {

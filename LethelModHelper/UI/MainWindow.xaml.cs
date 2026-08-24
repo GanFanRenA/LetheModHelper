@@ -1,4 +1,4 @@
-using LethelModHelper.Models;
+using LethelModHelper.Core.Models;
 using LethelModHelper.Services;
 using Microsoft.Win32;
 using System;
@@ -169,7 +169,7 @@ namespace LethelModHelper
         private IEnumerable<IGrouping<string, KeyValuePair<string, FileParseResult>>> GetSuccessfulFileGroupsByFolder()
         {
             return _scanner.ParsedFiles
-                \.Where(kvp => kvp.Value.Success)
+                .Where(kvp => kvp.Value.Success)
                 .Where(kvp => !kvp.Key.Contains("\\personality-passive\\", StringComparison.OrdinalIgnoreCase))
                 .Where(kvp => !kvp.Key.Contains("\\personality_passive\\", StringComparison.OrdinalIgnoreCase))
                 .GroupBy(kvp => Path.GetDirectoryName(kvp.Key) ?? "")

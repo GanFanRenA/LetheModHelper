@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using LethelModHelper.Core.Models;
 using LethelModHelper.Handlers;
-using LethelModHelper.Models;
 
 namespace LethelModHelper.Services
 {

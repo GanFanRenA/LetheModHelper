@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using LethelModHelper.Models;
+using LethelModHelper.Core.Models;
 
 namespace LethelModHelper.Services
 {

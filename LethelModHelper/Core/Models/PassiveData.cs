@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace LethelModHelper.Models
+namespace LethelModHelper.Core.Models
 {
     /// <summary>
     /// Passive 数据

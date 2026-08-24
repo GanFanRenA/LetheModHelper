@@ -1,4 +1,4 @@
-﻿namespace LethelModHelper.Models
+﻿namespace LethelModHelper.Core.Models
 {
     public class CharacterData
     {
