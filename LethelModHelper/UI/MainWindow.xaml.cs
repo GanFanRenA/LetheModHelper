@@ -20,7 +20,10 @@ namespace LethelModHelper
         private ModScanner _scanner;
         private Dictionary<string, object> _fileDataMap = new();
         private ScriptParser _scriptParser = new();
+        private readonly FileService _fileService;
+        private readonly LocaleService _localeService;
         private string? _currentFilePath;
+        
 
         // JSON 序列化选项
         private static readonly JsonSerializerOptions SaveJsonOptions = new()
@@ -61,6 +64,10 @@ namespace LethelModHelper
             _scanner = new ModScanner();
             _scanner.FileParsed += OnFileParsed;
             _scanner.FileParseFailed += OnFileParseFailed;
+
+            _fileService = new FileService();
+            _localeService = new LocaleService(
+        _fileService);
         }
 
         #endregion
@@ -118,7 +125,7 @@ namespace LethelModHelper
 
         private void FileTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
-            if (e.NewValue is TreeViewItem { Tag: string filePath } && File.Exists(filePath))
+            if (e.NewValue is TreeViewItem { Tag: string filePath } && _fileService.Exists(filePath))
             {
                 DisplayFileContent(filePath);
             }
@@ -779,7 +786,7 @@ namespace LethelModHelper
         private void WriteJsonToFile<T>(T data, string filePath, JsonSerializerOptions options)
         {
             var json = JsonSerializer.Serialize(data, options);
-            File.WriteAllText(filePath, json);
+            _localeService.SaveLocale(filePath, json);
         }
 
         #endregion
@@ -905,7 +912,7 @@ namespace LethelModHelper
             {
                 AddFolderContextMenu(contextMenu, tag);
             }
-            else if (File.Exists(tag) && Path.GetExtension(tag).ToLower() == ".json")
+            else if (_fileService.Exists(tag) && Path.GetExtension(tag).ToLower() == ".json")
             {
                 AddFileContextMenu(contextMenu, tag);
             }
@@ -959,7 +966,7 @@ namespace LethelModHelper
 
         private void DeleteJsonFile_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is not MenuItem { Tag: string filePath } || !File.Exists(filePath))
+            if (sender is not MenuItem { Tag: string filePath } || !_fileService.Exists(filePath))
             {
                 MessageBox.Show("文件不存在", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
@@ -989,7 +996,7 @@ namespace LethelModHelper
             var fileName = Path.GetFileNameWithoutExtension(filePath);
             var folderPath = Path.GetDirectoryName(filePath);
 
-            File.Delete(filePath);
+            _localeService.DeleteLocale(filePath);
             System.Diagnostics.Debug.WriteLine($"✅ 已删除文件: {filePath}");
 
             var modPath = GetModPathFromBuffFolder(folderPath);
@@ -1036,7 +1043,7 @@ namespace LethelModHelper
 
         private bool DeleteEntryFromFile(string filePath, string entryId, Type entryType)
         {
-            var jsonContent = File.ReadAllText(filePath);
+            var jsonContent = _localeService.LoadLocale(filePath);
 
             if (entryType == typeof(BuffLocaleEntry))
             {
@@ -1064,7 +1071,7 @@ namespace LethelModHelper
         private void SaveLocaleData<T>(Dictionary<string, T> data, string filePath)
         {
             var json = JsonSerializer.Serialize(data, LocaleWriteOptions);
-            File.WriteAllText(filePath, json);
+            _localeService.SaveLocale(filePath, json);
         }
 
         private void RefreshAfterDelete()
@@ -1127,7 +1134,7 @@ namespace LethelModHelper
         private void CreateBuffFile(string folderPath, string buffId)
         {
             var filePath = Path.Combine(folderPath, $"{buffId}.json");
-            if (File.Exists(filePath))
+            if (_fileService.Exists(filePath))
             {
                 throw new Exception($"文件 {buffId}.json 已存在");
             }
@@ -1191,12 +1198,12 @@ namespace LethelModHelper
 
         private Dictionary<string, T> LoadOrCreateLocaleData<T>(string filePath)
         {
-            if (!File.Exists(filePath))
+            if (!_fileService.Exists(filePath))
             {
                 return new Dictionary<string, T>();
             }
 
-            var jsonContent = File.ReadAllText(filePath);
+            var jsonContent = _localeService.LoadLocale(filePath);
             return JsonSerializer.Deserialize<Dictionary<string, T>>(jsonContent, LocaleReadOptions)
                    ?? new Dictionary<string, T>();
         }
@@ -1236,7 +1243,7 @@ namespace LethelModHelper
                 UpdateFileTree();
 
                 var filePath = Path.Combine(folderPath, $"{fileId}.json");
-                if (File.Exists(filePath))
+                if (_fileService.Exists(filePath))
                 {
                     Dispatcher.BeginInvoke(new Action(() => SelectFileInTree(filePath)),
                         System.Windows.Threading.DispatcherPriority.Background);
