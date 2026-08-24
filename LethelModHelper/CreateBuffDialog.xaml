@@ -1,0 +1,38 @@
+﻿<Window x:Class="LethelModHelper.CreateBuffDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="新建 Buff" Height="350" Width="450"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Buff ID:" Margin="0,0,0,5" FontWeight="Bold"/>
+        <TextBox Grid.Row="1" x:Name="IdTextBox" Margin="0,0,0,15" Text="NewBuff"/>
+
+        <TextBlock Grid.Row="2" Text="名称:" Margin="0,0,0,5" FontWeight="Bold"/>
+        <TextBox Grid.Row="3" x:Name="NameTextBox" Margin="0,0,0,15" Text="新 Buff"/>
+
+        <TextBlock Grid.Row="4" Text="描述:" Margin="0,0,0,5" FontWeight="Bold"/>
+        <TextBox Grid.Row="5" x:Name="DescTextBox" 
+                 TextWrapping="Wrap" 
+                 AcceptsReturn="True"
+                 VerticalScrollBarVisibility="Auto"
+                 MinHeight="80"
+                 Margin="0,0,0,15"/>
+
+        <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="确定" Width="80" Height="30" Margin="0,0,10,0" Click="OkButton_Click" IsDefault="True"/>
+            <Button Content="取消" Width="80" Height="30" Click="CancelButton_Click" IsCancel="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

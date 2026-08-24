@@ -1,0 +1,152 @@
+文件夹 PATH 列表
+卷序列号为 A4ED-7099
+D:.
+|   LethelModHelper.slnx
+|   project-tree.txt
+|   
+\---LethelModHelper
+    |   App.xaml
+    |   App.xaml.cs
+    |   AssemblyInfo.cs
+    |   CreateBuffDialog.xaml
+    |   CreateBuffDialog.xaml.cs
+    |   LethelModHelper.csproj
+    |   LethelModHelper.csproj.user
+    |   MainWindow.xaml
+    |   MainWindow.xaml.cs
+    |   
+    +---bin
+    |   +---Debug
+    |   |   \---net8.0-windows
+    |   |           LethelModHelper.deps.json
+    |   |           LethelModHelper.dll
+    |   |           LethelModHelper.exe
+    |   |           LethelModHelper.pdb
+    |   |           LethelModHelper.runtimeconfig.json
+    |   |           
+    |   \---Release
+    |       \---net8.0-windows
+    |               LethelModHelper.deps.json
+    |               LethelModHelper.dll
+    |               LethelModHelper.exe
+    |               LethelModHelper.pdb
+    |               LethelModHelper.runtimeconfig.json
+    |               
+    +---Handlers
+    |       AbnormalityHandler.cs
+    |       BaseJsonHandler.cs
+    |       BuffHandler.cs
+    |       IFileHandler.cs
+    |       PersonalityHandler.cs
+    |       PersonalityPassiveHandler.cs
+    |       
+    +---Models
+    |       AbnormalityData.cs
+    |       BuffData.cs
+    |       BuffLocaleEntry.cs
+    |       CharacterData.cs
+    |       EditableAttribute.cs
+    |       FileParseResult.cs
+    |       KeywordLocaleData.cs
+    |       LocaleCache.cs
+    |       PersonalityData.cs
+    |       PersonalityPassiveData.cs
+    |       ScriptFieldCache.cs
+    |       ScriptModel.cs
+    |       
+    +---obj
+    |   |   LethelModHelper.csproj.nuget.dgspec.json
+    |   |   LethelModHelper.csproj.nuget.g.props
+    |   |   LethelModHelper.csproj.nuget.g.targets
+    |   |   project.assets.json
+    |   |   project.nuget.cache
+    |   |   
+    |   +---Debug
+    |   |   \---net8.0-windows
+    |   |       |   .NETCoreApp,Version=v8.0.AssemblyAttributes.cs
+    |   |       |   App.g.cs
+    |   |       |   App.g.i.cs
+    |   |       |   apphost.exe
+    |   |       |   CreateBuffDialog.baml
+    |   |       |   CreateBuffDialog.g.cs
+    |   |       |   CreateBuffDialog.g.i.cs
+    |   |       |   GeneratedInternalTypeHelper.g.i.cs
+    |   |       |   LethelModHelper.AssemblyInfo.cs
+    |   |       |   LethelModHelper.AssemblyInfoInputs.cache
+    |   |       |   LethelModHelper.assets.cache
+    |   |       |   LethelModHelper.csproj.BuildWithSkipAnalyzers
+    |   |       |   LethelModHelper.csproj.CoreCompileInputs.cache
+    |   |       |   LethelModHelper.csproj.FileListAbsolute.txt
+    |   |       |   LethelModHelper.designer.deps.json
+    |   |       |   LethelModHelper.designer.runtimeconfig.json
+    |   |       |   LethelModHelper.dll
+    |   |       |   LethelModHelper.g.resources
+    |   |       |   LethelModHelper.GeneratedMSBuildEditorConfig.editorconfig
+    |   |       |   LethelModHelper.genruntimeconfig.cache
+    |   |       |   LethelModHelper.GlobalUsings.g.cs
+    |   |       |   LethelModHelper.pdb
+    |   |       |   LethelModHelper_MarkupCompile.cache
+    |   |       |   LethelModHelper_MarkupCompile.i.cache
+    |   |       |   LethelModHelper_rifyngdz_wpftmp.AssemblyInfo.cs
+    |   |       |   LethelModHelper_rifyngdz_wpftmp.AssemblyInfoInputs.cache
+    |   |       |   LethelModHelper_rifyngdz_wpftmp.assets.cache
+    |   |       |   LethelModHelper_rifyngdz_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+    |   |       |   LethelModHelper_rifyngdz_wpftmp.GlobalUsings.g.cs
+    |   |       |   LethelModHelper_xrdzyo1l_wpftmp.AssemblyInfo.cs
+    |   |       |   LethelModHelper_xrdzyo1l_wpftmp.AssemblyInfoInputs.cache
+    |   |       |   LethelModHelper_xrdzyo1l_wpftmp.assets.cache
+    |   |       |   LethelModHelper_xrdzyo1l_wpftmp.csproj.BuildWithSkipAnalyzers
+    |   |       |   LethelModHelper_xrdzyo1l_wpftmp.GeneratedMSBuildEditorConfig.editorconfig
+    |   |       |   LethelModHelper_xrdzyo1l_wpftmp.GlobalUsings.g.cs
+    |   |       |   MainWindow.baml
+    |   |       |   MainWindow.g.cs
+    |   |       |   MainWindow.g.i.cs
+    |   |       |   
+    |   |       +---ref
+    |   |       |       LethelModHelper.dll
+    |   |       |       
+    |   |       \---refint
+    |   |               LethelModHelper.dll
+    |   |               
+    |   \---Release
+    |       \---net8.0-windows
+    |           |   .NETCoreApp,Version=v8.0.AssemblyAttributes.cs
+    |           |   App.g.cs
+    |           |   App.g.i.cs
+    |           |   apphost.exe
+    |           |   LethelModHelper.AssemblyInfo.cs
+    |           |   LethelModHelper.AssemblyInfoInputs.cache
+    |           |   LethelModHelper.assets.cache
+    |           |   LethelModHelper.csproj.CoreCompileInputs.cache
+    |           |   LethelModHelper.csproj.FileListAbsolute.txt
+    |           |   LethelModHelper.designer.deps.json
+    |           |   LethelModHelper.designer.runtimeconfig.json
+    |           |   LethelModHelper.dll
+    |           |   LethelModHelper.g.resources
+    |           |   LethelModHelper.GeneratedMSBuildEditorConfig.editorconfig
+    |           |   LethelModHelper.genruntimeconfig.cache
+    |           |   LethelModHelper.GlobalUsings.g.cs
+    |           |   LethelModHelper.pdb
+    |           |   LethelModHelper_MarkupCompile.cache
+    |           |   LethelModHelper_MarkupCompile.i.cache
+    |           |   MainWindow.baml
+    |           |   MainWindow.g.cs
+    |           |   MainWindow.g.i.cs
+    |           |   PublishOutputs.2ded35118e.txt
+    |           |   
+    |           +---ref
+    |           |       LethelModHelper.dll
+    |           |       
+    |           \---refint
+    |                   LethelModHelper.dll
+    |                   
+    +---Properties
+    |   \---PublishProfiles
+    |           FolderProfile.pubxml
+    |           FolderProfile.pubxml.user
+    |           
+    \---Services
+            EditorGenerator.cs
+            ModScanner.cs
+            ScriptParser.cs
+            
