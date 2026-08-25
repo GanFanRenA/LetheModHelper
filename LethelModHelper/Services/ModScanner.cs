@@ -32,6 +32,10 @@ namespace LethelModHelper.Services
         // ===== Keyword 本地化 =====
         public Dictionary<string, KeywordLocaleEntry> KeywordLocaleMap { get; private set; } = new();  // ← 添加这一行
 
+        // ===== Skill 本地化 (新增) =====
+        public Dictionary<string, SkillLocaleEntry> SkillLocaleMap { get; private set; } = new();
+        // ===== Passive 本地化 (新增) =====
+        public Dictionary<string, PassiveLocaleEntry> PassiveLocaleMap { get; private set; } = new();
         public event EventHandler<string>? FileParsed;
         public event EventHandler<string>? FileParseFailed;
 
@@ -42,6 +46,7 @@ namespace LethelModHelper.Services
             RegisterHandler(new PassiveHandler());
             RegisterHandler(new BuffHandler());
             RegisterHandler(new AbnormalityHandler());
+            RegisterHandler(new SkillHandler());
         }
 
         public void RegisterHandler(IFileHandler handler)
@@ -66,6 +71,8 @@ namespace LethelModHelper.Services
 
             LoadBuffLocaleData(modPath);
             LoadKeywordLocaleData(modPath);
+            LoadSkillLocaleData(modPath);
+            LoadPassiveLocaleData(modPath);
 
             ScanFolder(modPath);
 
@@ -348,5 +355,137 @@ namespace LethelModHelper.Services
             LocaleCache.KeywordLocaleMap = KeywordLocaleMap;
             System.Diagnostics.Debug.WriteLine($"✅ 总共加载了 {KeywordLocaleMap.Count} 个 Keyword 本地化条目");
         }
-    }
+
+        /// <summary>
+        /// 加载 Skill 本地化数据 (skillList/*.json)
+        /// </summary>
+        private void LoadSkillLocaleData(string modPath)
+        {
+            SkillLocaleMap.Clear();
+
+            // ===== 固定路径：custom_limbus_locale/EN/skillList/ =====
+            var skillFolder = Path.Combine(modPath, "custom_limbus_locale", "EN", "skillList");
+
+            if (!Directory.Exists(skillFolder))
+            {
+                System.Diagnostics.Debug.WriteLine($"未找到 skillList 文件夹: {skillFolder}");
+                return;
+            }
+
+            var jsonFiles = Directory.GetFiles(skillFolder, "*.json");
+
+            if (jsonFiles.Length == 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"skillList 文件夹下没有 JSON 文件");
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"✅ 找到 {jsonFiles.Length} 个 Skill 本地化文件");
+
+            foreach (var filePath in jsonFiles)
+            {
+                try
+                {
+                    var jsonContent = File.ReadAllText(filePath);
+
+                    var options = new System.Text.Json.JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        ReadCommentHandling = System.Text.Json.JsonCommentHandling.Skip,
+                        AllowTrailingCommas = true
+                    };
+
+                    var localeData = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, SkillLocaleEntry>>(jsonContent, options);
+
+                    if (localeData != null)
+                    {
+                        foreach (var kvp in localeData)
+                        {
+                            if (string.IsNullOrEmpty(kvp.Value.Id))
+                            {
+                                kvp.Value.Id = kvp.Key;
+                            }
+                            SkillLocaleMap[kvp.Key] = kvp.Value;
+
+                            var levelCount = kvp.Value.levelList?.Count ?? 0;
+                            var firstName = (kvp.Value.levelList != null && kvp.Value.levelList.Count > 0)
+                                ? kvp.Value.levelList[0].name
+                                : "(无名称)";
+                        }
+
+                        LocaleCache.CurrentSkillLocaleFilePath = filePath;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"❌ 加载 Skill 文件失败: {Path.GetFileName(filePath)} - {ex.Message}");
+                }
+            }
+
+            LocaleCache.SkillLocaleMap = SkillLocaleMap;
+            System.Diagnostics.Debug.WriteLine($"✅ 总共加载了 {SkillLocaleMap.Count} 个 Skill 本地化条目");
+        }
+
+        private void LoadPassiveLocaleData(string modPath)
+        {
+            PassiveLocaleMap.Clear();
+
+            var passiveFolder = Path.Combine(modPath, "custom_limbus_locale", "EN", "passiveList");
+
+            if (!Directory.Exists(passiveFolder))
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ 未找到 passiveList 文件夹: {passiveFolder}");
+                return;
+            }
+
+            var jsonFiles = Directory.GetFiles(passiveFolder, "*.json");
+
+            if (jsonFiles.Length == 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ passiveList 文件夹下没有 JSON 文件");
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"✅ 找到 {jsonFiles.Length} 个 Passive 本地化文件");
+
+            foreach (var filePath in jsonFiles)
+            {
+                try
+                {
+                    var jsonContent = File.ReadAllText(filePath);
+
+                    var options = new System.Text.Json.JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        ReadCommentHandling = System.Text.Json.JsonCommentHandling.Skip,
+                        AllowTrailingCommas = true
+                    };
+
+                    var localeData = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, PassiveLocaleEntry>>(jsonContent, options);
+
+                    if (localeData != null && localeData.Count > 0)
+                    {
+                        foreach (var kvp in localeData)
+                        {
+                            if (string.IsNullOrEmpty(kvp.Value.id))
+                            {
+                                kvp.Value.id = kvp.Key;
+                            }
+                            PassiveLocaleMap[kvp.Key] = kvp.Value;
+                            System.Diagnostics.Debug.WriteLine($"  加载 Passive: {kvp.Key} -> '{kvp.Value.name}'");
+                        }
+
+                        LocaleCache.CurrentPassiveLocaleFilePath = filePath;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"❌ 加载 Passive 文件失败: {Path.GetFileName(filePath)} - {ex.Message}");
+                }
+            }
+
+            LocaleCache.PassiveLocaleMap = PassiveLocaleMap;
+            System.Diagnostics.Debug.WriteLine($"✅ 总共加载了 {PassiveLocaleMap.Count} 个 Passive 本地化条目");
+        }
+    } 
 }

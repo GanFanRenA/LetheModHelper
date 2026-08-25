@@ -15,6 +15,14 @@ namespace LethelModHelper.Core.Models
         public static Dictionary<string, KeywordLocaleEntry> KeywordLocaleMap { get; set; } = new();
         public static string CurrentKeywordLocaleFilePath { get; set; } = "";
 
+        // ===== Skill 本地化 (新增) =====
+        public static Dictionary<string, SkillLocaleEntry> SkillLocaleMap { get; set; } = new();
+        public static string CurrentSkillLocaleFilePath { get; set; } = "";
+
+        // ===== Passive 本地化 (新增) =====
+        public static Dictionary<string, PassiveLocaleEntry> PassiveLocaleMap { get; set; } = new();
+        public static string CurrentPassiveLocaleFilePath { get; set; } = "";
+
         // ===== Buff 方法 =====
         public static BuffLocaleEntry? GetBuffLocale(string id)
         {
@@ -66,6 +74,44 @@ namespace LethelModHelper.Core.Models
             {
                 System.Diagnostics.Debug.WriteLine($"❌ 保存失败: {ex.Message}");
             }
+        }
+
+        
+
+        // ===== Skill 方法 (新增) =====
+        public static SkillLocaleEntry? GetSkillLocale(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return null;
+            SkillLocaleMap.TryGetValue(id, out var entry);
+            return entry;
+        }
+
+        /// <summary>
+        /// 获取技能本地化的第一个等级（通常只有 level 1）
+        /// </summary>
+        public static SkillLocaleLevel? GetSkillLocaleLevel(string id)
+        {
+            var entry = GetSkillLocale(id);
+            if (entry?.levelList == null || entry.levelList.Count == 0) return null;
+            return entry.levelList[0];  // 直接取第一个
+        }
+
+        public static void SaveSkillLocaleData()
+        {
+            SaveLocaleData(CurrentSkillLocaleFilePath, SkillLocaleMap);
+        }
+
+        // ===== Passive 方法 (新增) =====
+        public static PassiveLocaleEntry? GetPassiveLocale(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return null;
+            PassiveLocaleMap.TryGetValue(id, out var entry);
+            return entry;
+        }
+
+        public static void SavePassiveLocaleData()
+        {
+            SaveLocaleData(CurrentPassiveLocaleFilePath, PassiveLocaleMap);
         }
     }
 }

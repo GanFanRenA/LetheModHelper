@@ -87,19 +87,6 @@ namespace LethelModHelper.Services.Editors
                 // 显示编辑区域
                 AddPassiveGroupEditor("⚔️ 战斗被动", _entry.LinkedPassiveEntry.battlePassiveList);
                 AddPassiveGroupEditor("🛡️ 支援被动", _entry.LinkedPassiveEntry.supporterPassiveList);
-
-                // 保存按钮
-                var saveBtn = new Button
-                {
-                    Content = "💾 保存 PersonalityPassive 修改",
-                    Background = Brushes.LightBlue,
-                    Padding = new Thickness(15, 5, 15, 5),
-                    Margin = new Thickness(0, 10, 0, 0),
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    FontWeight = FontWeights.Bold
-                };
-                saveBtn.Click += (s, e) => SavePassiveData();
-                _container.Children.Add(saveBtn);
             }
 
             border.Child = _container;
@@ -128,7 +115,7 @@ namespace LethelModHelper.Services.Editors
             {
                 _container.Children.Add(new TextBlock
                 {
-                    Text = "⚠️ 未找到对应的 personality_passive 数据，点击下方创建",
+                    Text = "⚠️ 未找到对应的 人格被动 数据，点击下方创建",
                     Foreground = Brushes.Orange,
                     FontSize = 11,
                     Margin = new Thickness(0, 2, 0, 5)
@@ -136,7 +123,7 @@ namespace LethelModHelper.Services.Editors
 
                 var createBtn = new Button
                 {
-                    Content = "➕ 创建 PersonalityPassive",
+                    Content = "➕ 创建 人格被动",
                     Background = Brushes.LightGreen,
                     Padding = new Thickness(10, 5, 10, 5),
                     Margin = new Thickness(0, 5, 0, 5),

@@ -160,16 +160,15 @@ namespace LethelModHelper
             return CreateFileTreeNode(Path.GetFileName(modPath), modPath, "📁", true);
         }
 
-        /// <summary>
-        /// 获取所有解析成功文件，并按其所在目录分组。
-        /// </summary>
-        /// <returns>按目录路径分组后的文件集合。</returns>
+        // UI/MainWindow.xaml.cs (修改 GetSuccessfulFileGroupsByFolder)
+
         private IEnumerable<IGrouping<string, KeyValuePair<string, FileParseResult>>> GetSuccessfulFileGroupsByFolder()
         {
             return _scanner.ParsedFiles
                 .Where(kvp => kvp.Value.Success)
                 .Where(kvp => !kvp.Key.Contains("\\personality-passive\\", StringComparison.OrdinalIgnoreCase))
                 .Where(kvp => !kvp.Key.Contains("\\personality_passive\\", StringComparison.OrdinalIgnoreCase))
+                // 注意: 不跳过 skill 文件夹，让它显示在文件树中
                 .GroupBy(kvp => Path.GetDirectoryName(kvp.Key) ?? "")
                 .OrderBy(group => group.Key);
         }
@@ -589,17 +588,21 @@ namespace LethelModHelper
             }
         }
 
+        // UI/MainWindow.xaml.cs
+
         private void DeleteFileAndLocale(string filePath)
         {
             var fileName = Path.GetFileNameWithoutExtension(filePath);
             var folderPath = Path.GetDirectoryName(filePath);
 
+            // 1. 删除本地化条目
             _localeService.DeleteLocale(filePath);
             System.Diagnostics.Debug.WriteLine($"✅ 已删除文件: {filePath}");
 
             var modPath = GetModPathFromBuffFolder(folderPath);
             if (string.IsNullOrEmpty(modPath)) return;
 
+            // 2. 从 bufList 和 keywordList 中删除
             DeleteFromLocaleFile(
                 Path.Combine(modPath, "custom_limbus_locale", "EN", "bufList"),
                 fileName, typeof(BuffLocaleEntry));
@@ -608,10 +611,46 @@ namespace LethelModHelper
                 Path.Combine(modPath, "custom_limbus_locale", "EN", "keywordList"),
                 fileName, typeof(KeywordLocaleEntry));
 
+            // 3. 删除 custom_buffs 下的 ID 文件 (新增)
+            DeleteBuffIdFile(modPath, fileName);
+
+            // 4. 从会话中移除
             _modSession.RemoveFileData(filePath);
 
+            // 5. 从缓存中移除
             LocaleCache.BuffLocaleMap.Remove(fileName);
             LocaleCache.KeywordLocaleMap.Remove(fileName);
+        }
+
+        /// <summary>
+        /// 删除 custom_buffs 下的 Buff ID 文件
+        /// </summary>
+        private void DeleteBuffIdFile(string modPath, string buffId)
+        {
+            try
+            {
+                var customBuffsFolder = Path.Combine(modPath, "custom_buffs");
+                if (!Directory.Exists(customBuffsFolder))
+                {
+                    System.Diagnostics.Debug.WriteLine($"custom_buffs 文件夹不存在: {customBuffsFolder}");
+                    return;
+                }
+
+                var filePath = Path.Combine(customBuffsFolder, $"{buffId}.txt");
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                    System.Diagnostics.Debug.WriteLine($"✅ 删除 Buff ID 文件: {filePath}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"⚠️ Buff ID 文件不存在: {filePath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ 删除 Buff ID 文件失败: {ex.Message}");
+            }
         }
 
         private void DeleteFromLocaleFile(string localeFolder, string entryId, Type entryType)
@@ -713,11 +752,98 @@ namespace LethelModHelper
             }
         }
 
+        // UI/MainWindow.xaml.cs
+
         private void CreateBuff(string folderPath, string buffId, string buffName, string buffDesc)
         {
+            // 1. 创建 Buff JSON 文件
             CreateBuffFile(folderPath, buffId);
+
+            // 2. 更新本地化文件 (bufList 和 keywordList)
             UpdateLocaleFile(folderPath, buffId, buffName, buffDesc, typeof(BuffLocaleEntry));
             UpdateLocaleFile(folderPath, buffId, buffName, buffDesc, typeof(KeywordLocaleEntry));
+
+            // 3. 创建 custom_buffs 下的 ID 文件 (新增)
+            CreateBuffIdFile(buffId, buffName);
+        }
+
+        /// <summary>
+        /// 在 custom_buffs 文件夹下创建 Buff ID 文件
+        /// </summary>
+        private void CreateBuffIdFile(string buffId, string buffName)
+        {
+            try
+            {
+                // 获取 Mod 根目录
+                var modPath = GetModPathFromCurrentContext();
+                if (string.IsNullOrEmpty(modPath))
+                {
+                    System.Diagnostics.Debug.WriteLine("❌ 无法找到 Mod 根目录，跳过创建 Buff ID 文件");
+                    return;
+                }
+
+                // custom_buffs 文件夹路径
+                var customBuffsFolder = Path.Combine(modPath, "custom_buffs");
+
+                // 如果文件夹不存在则创建
+                if (!Directory.Exists(customBuffsFolder))
+                {
+                    Directory.CreateDirectory(customBuffsFolder);
+                    System.Diagnostics.Debug.WriteLine($"✅ 创建文件夹: {customBuffsFolder}");
+                }
+
+                // 文件路径: custom_buffs/{buffId}.txt
+                var filePath = Path.Combine(customBuffsFolder, $"{buffId}.txt");
+
+                // 检查文件是否已存在
+                if (File.Exists(filePath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"⚠️ 文件已存在: {filePath}");
+                    return;
+                }
+
+                // 写入内容
+                var content = $@"{{
+    ""id"": ""{buffId}"",
+    ""name"": ""{buffName}""
+}}";
+
+                File.WriteAllText(filePath, content);
+                System.Diagnostics.Debug.WriteLine($"✅ 创建 Buff ID 文件: {filePath}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ 创建 Buff ID 文件失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 获取当前 Mod 根目录
+        /// </summary>
+        private string? GetModPathFromCurrentContext()
+        {
+            // 从当前打开的文件路径获取 Mod 根目录
+            if (!string.IsNullOrEmpty(_currentFilePath))
+            {
+                var directory = new DirectoryInfo(_currentFilePath);
+                while (directory != null)
+                {
+                    var customLimbusData = Path.Combine(directory.FullName, "custom_limbus_data");
+                    if (Directory.Exists(customLimbusData))
+                    {
+                        return directory.FullName;
+                    }
+                    directory = directory.Parent;
+                }
+            }
+
+            // 如果当前没有打开文件，使用 ModScanner 的路径
+            if (!string.IsNullOrEmpty(_scanner.CurrentModPath))
+            {
+                return _scanner.CurrentModPath;
+            }
+
+            return null;
         }
 
         private void CreateBuffFile(string folderPath, string buffId)

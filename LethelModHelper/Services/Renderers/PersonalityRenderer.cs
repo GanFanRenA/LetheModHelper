@@ -60,14 +60,16 @@ namespace LethelModHelper.Services.Renderers
 
                 var contentStack = new StackPanel();
 
+                // 基础数据编辑
                 contentStack.Children.Add(EditorGenerator.GenerateEditor(entry));
 
-                // ===== 使用新的可编辑 PersonalityPassive 编辑器 =====
+                // ===== ✅ 修复：PersonalityPassive 编辑器（可编辑） =====
                 var passiveEditor = new PersonalityPassiveEditor(
                     entry,
                     filePath,
-                    () => OnPassiveDataChanged(entry)  // 数据变更回调
+                    () => OnPassiveDataChanged(entry)
                 );
+                // 🔴 关键修复：将编辑器添加到 contentStack
                 contentStack.Children.Add(passiveEditor.Create());
 
                 expander.Content = contentStack;
@@ -77,13 +79,8 @@ namespace LethelModHelper.Services.Renderers
             return mainPanel;
         }
 
-        /// <summary>
-        /// Passive 数据变更回调
-        /// </summary>
         private void OnPassiveDataChanged(PersonalityEntry entry)
         {
-            // 可以在这里添加 UI 更新逻辑
-            // 比如更新 Expander 的 Header 显示
             System.Diagnostics.Debug.WriteLine(
                 $"PersonalityPassive 数据已变更: Personality {entry.id}");
         }

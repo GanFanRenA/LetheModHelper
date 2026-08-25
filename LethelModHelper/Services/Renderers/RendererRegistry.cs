@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// Services/Renderers/RendererRegistry.cs
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 
@@ -15,7 +16,8 @@ namespace LethelModHelper.Services.Renderers
                 new PersonalityRenderer(),
                 new PassiveRenderer(),
                 new BuffRenderer(),
-                new AbnormalityRenderer()
+                new AbnormalityRenderer(),
+                new SkillRenderer()  // ← 添加技能渲染器
             };
 
             foreach (var renderer in _renderers)
