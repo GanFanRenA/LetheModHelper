@@ -1,12 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Windows;
 
 namespace LethelModHelper.Services.Renderers
 {
-    internal class IDataRenderer
+    public interface IDataRenderer
     {
+        bool CanRender(object data);
+
+        FrameworkElement Render(object data);
+
+        void SetSaveCallback(Action<object> saveAction);
     }
 }

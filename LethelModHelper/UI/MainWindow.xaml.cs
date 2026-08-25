@@ -1,5 +1,6 @@
 using LethelModHelper.Core.Models;
 using LethelModHelper.Services;
+using LethelModHelper.Services.Renderers;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
@@ -23,6 +24,7 @@ namespace LethelModHelper
         private readonly FileService _fileService;
         private readonly LocaleService _localeService;
         private readonly ModDataService _dataService;
+        private readonly List<IDataRenderer> _renderers;
         private string? _currentFilePath;
         
 
@@ -49,6 +51,19 @@ namespace LethelModHelper
             _fileService = new FileService();
             _localeService = new LocaleService(_fileService);
             _dataService = new ModDataService(_fileService);
+
+            _renderers = new()
+            {
+                new PersonalityRenderer(),
+                new PassiveRenderer(),
+                new BuffRenderer(),
+                new AbnormalityRenderer()
+            };
+
+            foreach (var renderer in _renderers)
+            {
+                renderer.SetSaveCallback(SaveRendererData);
+            }
         }
 
         #endregion
@@ -306,380 +321,20 @@ namespace LethelModHelper
         /// <param name="data">解析得到的数据对象。</param>
         private void DisplayDataByType(object data)
         {
-            switch (data)
+            foreach (var renderer in _renderers)
             {
-                case PersonalityData personalityData:
-                    DisplayPersonalityData(personalityData);
-                    break;                case PassiveData passiveTriggerData:
-                    DisplayPassiveTriggerData(passiveTriggerData);
-                    break;
-                case BuffData buffData:
-                    DisplayBuffData(buffData);
-                    break;
-                case AbnormalityData abnormalityData:
-                    DisplayAbnormalityData(abnormalityData);
-                    break;
-                default:
-                    AddTextToContent(data.ToString() ?? "（无数据）", Brushes.Black, 12,
-                        new Thickness(0), true);
-                    break;
-            }
-        }
-
-        private bool PrepareListContent<T>(List<T>? items, string emptyMessage)
-        {
-            ContentPanel.Children.Clear();
-            return !IsListEmpty(items, emptyMessage);
-        }
-
-        /// <summary>
-        /// 通用可编辑列表渲染模板：头部 + 保存按钮 + 条目展开编辑器。
-        /// </summary>
-        /// <typeparam name="T">列表条目类型。</typeparam>
-        /// <param name="entries">待渲染条目集合。</param>
-        /// <param name="headerText">顶部摘要文本。</param>
-        /// <param name="saveAction">保存按钮行为。</param>
-        /// <param name="headerBuilder">单条目标题构建器。</param>
-        private void RenderEditableDataList<T>(List<T> entries, string headerText, Action saveAction, Func<T, string> headerBuilder)
-        {
-            AddHeaderWithSaveButton(headerText, saveAction);
-
-            foreach (var entry in entries)
-            {
-                ContentPanel.Children.Add(CreateDataExpander(headerBuilder(entry), entry!));
-            }
-        }
-
-        private void DisplayPersonalityData(PersonalityData data)
-        {
-            if (!PrepareListContent(data.list, "没有 Personality 数据")) return;
-
-            RenderEditableDataList(
-                data.list,
-                $"共 {data.list.Count} 个 Personality 条目",
-                () => SaveData(data, "Personality 数据"),
-                entry => $"ID: {entry.id} | 罪人: {GetSinnerName(entry.characterId)} | 星级: {GetStarText(entry.rank)}");
-        }
-        private void DisplayPassiveTriggerData(PassiveData data)
-        {
-            if (IsListEmpty(data.list, "没有 passive 数据")) return;
-
-            AddTextToContent($"共 {data.list.Count} 个 passive 条目", Brushes.Black, 14,
-                new Thickness(0, 0, 0, 10), true);
-
-            foreach (var entry in data.list)
-            {
-                var expander = new Expander
+                if (renderer.CanRender(data))
                 {
-                    Header = $"被动 ID: {entry.id}",
-                    IsExpanded = false,
-                    Margin = new Thickness(0, 5, 0, 5),
-                    Padding = new Thickness(10)
-                };
-
-                var contentStack = new StackPanel();
-                var scripts = (entry.requireIDList ?? new List<string>())
-                    .Where(x => !string.IsNullOrWhiteSpace(x))
-                    .ToList();
-
-                if (scripts.Count == 0)
-                {
-                    contentStack.Children.Add(CreateSelectableText("（没有 requireIDList）", false, Brushes.Gray, 12));
+                    var uiElement = renderer.Render(data);
+                    ContentPanel.Children.Clear();
+                    ContentPanel.Children.Add(uiElement);
+                    return;
                 }
-                else
-                {
-                    contentStack.Children.Add(CreateSelectableText("📜 requireIDList:", true, null, 12));
-
-                    foreach (var script in scripts)
-                    {
-                        var parsed = _scriptParser.Parse(script);
-                        contentStack.Children.Add(CreateScriptDisplayBlock(script, parsed));
-                    }
-                }
-
-                expander.Content = contentStack;
-                ContentPanel.Children.Add(expander);
-            }
-        }
-
-        private void DisplayBuffData(BuffData data)
-        {
-            if (!PrepareListContent(data.list, "没有 Buff 数据")) return;
-
-            ContentPanel.Children.Add(CreateBuffHeaderPanel(data));
-
-            foreach (var entry in data.list)
-            {
-                DisplayBuffEntry(entry);
-            }
-        }
-
-        private StackPanel CreateBuffHeaderPanel(BuffData data)
-        {
-            var headerPanel = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Margin = new Thickness(0, 0, 0, 10)
-            };
-
-            headerPanel.Children.Add(CreateSelectableText(
-                $"共 {data.list.Count} 个 Buff", true, null, 14));
-
-            AddButton(headerPanel, "💾 保存本地化", Brushes.LightGreen, () =>
-            {
-                LocaleCache.SaveBuffLocaleData();
-                LocaleCache.SaveKeywordLocaleData();
-                MessageBox.Show("本地化已保存！", "提示",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-            });
-
-            AddButton(headerPanel, "💾 保存所有修改", null, () => SaveData(data, "Buff 数据"));
-            return headerPanel;
-        }
-
-        private void DisplayBuffEntry(BuffEntry entry)
-        {
-            var locale = LocaleCache.GetBuffLocale(entry.id);
-            var headerText = $"📊 {entry.id} ({(entry.buffType ?? "未知")})";
-
-            if (locale != null && !string.IsNullOrEmpty(locale.name))
-            {
-                headerText = $"📊 {locale.name} ({entry.id}) - {(entry.buffType ?? "未知")}";
             }
 
-            var expander = new Expander
-            {
-                Header = headerText,
-                IsExpanded = false,
-                Margin = new Thickness(0, 5, 0, 5),
-                Padding = new Thickness(10)
-            };
-
-            var contentStack = new StackPanel();
-
-            // Buff 数据部分
-            AddBorderedSection(contentStack, "📋 Buff 数据",
-                Brushes.DarkGreen, Brushes.Honeydew,
-                stack => stack.Children.Add(EditorGenerator.GenerateEditor(entry)));
-
-            // 本地化部分
-            if (locale != null)
-            {
-                AddBorderedSection(contentStack, "📋 buflist 本地化文本 (自动同步到 keywordList)",
-                    Brushes.DarkBlue, Brushes.AliceBlue,
-                    stack => AddLocaleEditor(stack, locale));
-            }
-
-            // 脚本部分
-            if (entry.list?.Any(a => !string.IsNullOrEmpty(a.ability)) == true)
-            {
-                AddBorderedSection(contentStack, "📜 脚本",
-                    Brushes.DarkOrange, Brushes.LemonChiffon,
-                    stack => AddScriptDisplays(stack, entry.list));
-            }
-
-            expander.Content = contentStack;
-            ContentPanel.Children.Add(expander);
-        }
-
-        private void DisplayAbnormalityData(AbnormalityData data)
-        {
-            if (!PrepareListContent(data.list, "没有异常体数据")) return;
-
-            RenderEditableDataList(
-                data.list,
-                $"共 {data.list.Count} 个异常体",
-                () => SaveData(data, "异常体数据"),
-                entry => $"ID: {entry.id} | 类型: {entry.classType ?? "未知"}");
-        }
-
-        #endregion
-
-        #region UI 辅助方法
-
-        private Expander CreateDataExpander(string header, object data)
-        {
-            var expander = new Expander
-            {
-                Header = header,
-                IsExpanded = false,
-                Margin = new Thickness(0, 5, 0, 5),
-                Padding = new Thickness(10)
-            };
-
-            var contentStack = new StackPanel();
-            contentStack.Children.Add(EditorGenerator.GenerateEditor(data));
-            expander.Content = contentStack;
-
-            return expander;
-        }
-
-        private void AddHeaderWithSaveButton(string headerText, Action saveAction)
-        {
-            var headerPanel = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Margin = new Thickness(0, 0, 0, 10)
-            };
-
-            headerPanel.Children.Add(CreateSelectableText(headerText, true, null, 14));
-            AddButton(headerPanel, "💾 保存所有修改", null, saveAction);
-            ContentPanel.Children.Add(headerPanel);
-        }
-
-        private void AddButton(StackPanel panel, string content, Brush? background, Action onClick)
-        {
-            var button = new Button
-            {
-                Content = content,
-                Margin = new Thickness(10, 0, 0, 0),
-                Padding = new Thickness(10, 5, 10, 5),
-                VerticalAlignment = VerticalAlignment.Center
-            };
-
-            if (background != null)
-            {
-                button.Background = background;
-            }
-
-            button.Click += (s, e) => onClick();
-            panel.Children.Add(button);
-        }
-
-        private void AddBorderedSection(StackPanel parent, string title,
-            Brush borderColor, Brush backgroundColor, Action<StackPanel> addContent)
-        {
-            var border = new Border
-            {
-                BorderBrush = borderColor,
-                BorderThickness = new Thickness(2),
-                CornerRadius = new CornerRadius(6),
-                Margin = new Thickness(0, 0, 0, 8),
-                Padding = new Thickness(10),
-                Background = backgroundColor
-            };
-
-            var stack = new StackPanel();
-            stack.Children.Add(new TextBlock
-            {
-                Text = title,
-                FontWeight = FontWeights.Bold,
-                FontSize = 14,
-                Foreground = borderColor,
-                Margin = new Thickness(0, 0, 0, 8)
-            });
-
-            addContent(stack);
-            border.Child = stack;
-            parent.Children.Add(border);
-        }
-
-        private void AddLocaleEditor(StackPanel stack, BuffLocaleEntry locale)
-        {
-            AddLocaleTextBox(stack, "📛 名字:", locale.name, 250, false,
-                (text) =>
-                {
-                    locale.name = text;
-                    var keywordEntry = LocaleCache.GetKeywordLocale(locale.id);
-                    if (keywordEntry != null) keywordEntry.name = text;
-                });
-
-            AddLocaleTextBox(stack, "📝 描述:", locale.desc?.Replace("\\n", "\n") ?? "",
-                double.NaN, true,
-                (text) =>
-                {
-                    locale.desc = text.Replace("\n", "\\n");
-                    var keywordEntry = LocaleCache.GetKeywordLocale(locale.id);
-                    if (keywordEntry != null) keywordEntry.desc = text.Replace("\n", "\\n");
-                }, 80);
-
-            AddLocaleTextBox(stack, "🎭 风味文本:", locale.flavor ?? "", double.NaN, true,
-                (text) =>
-                {
-                    locale.flavor = text;
-                    var keywordEntry = LocaleCache.GetKeywordLocale(locale.id);
-                    if (keywordEntry != null) keywordEntry.flavor = text;
-                }, 60, true);
-        }
-
-        private void AddLocaleTextBox(StackPanel stack, string label, string text,
-            double width, bool isMultiline, Action<string> onTextChanged,
-            double height = 0, bool isItalic = false)
-        {
-            var panel = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Margin = new Thickness(0, 2, 0, 2)
-            };
-
-            panel.Children.Add(CreateSelectableText(label, true, null, 12));
-
-            var textBox = new TextBox
-            {
-                Text = text,
-                Width = width,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(5, 0, 0, 0),
-                Background = Brushes.White,
-                BorderBrush = Brushes.LightGray,
-                BorderThickness = new Thickness(1)
-            };
-
-            if (isMultiline)
-            {
-                textBox.Width = double.NaN;
-                textBox.Height = height > 0 ? height : 80;
-                textBox.TextWrapping = TextWrapping.Wrap;
-                textBox.AcceptsReturn = true;
-                textBox.AcceptsTab = true;
-                textBox.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
-                textBox.Margin = new Thickness(10, 2, 0, 5);
-            }
-
-            if (isItalic)
-            {
-                textBox.FontStyle = FontStyles.Italic;
-            }
-
-            textBox.TextChanged += (s, e) =>
-            {
-                textBox.Background = Brushes.LightYellow;
-                onTextChanged(textBox.Text);
-            };
-
-            stack.Children.Add(panel);
-            stack.Children.Add(textBox);
-        }
-
-        private void AddScriptDisplays(StackPanel stack, List<BuffAbility> abilities)
-        {
-            foreach (var ability in abilities.Where(a => !string.IsNullOrEmpty(a.ability)))
-            {
-                var parsed = _scriptParser.Parse(ability.ability);
-                stack.Children.Add(CreateScriptDisplayBlock(ability.ability, parsed));
-            }
-        }
-
-        private void AddPassiveList(StackPanel stack, string title, List<PassiveGroup>? passiveList)
-        {
-            if (passiveList == null || passiveList.Count == 0) return;
-
-            stack.Children.Add(new TextBlock
-            {
-                Text = title,
-                FontWeight = FontWeights.Bold,
-                Margin = new Thickness(0, 5, 0, 3)
-            });
-
-            foreach (var group in passiveList)
-            {
-                var ids = string.Join(", ", group.passiveIDList ?? new List<int>());
-                stack.Children.Add(new TextBlock
-                {
-                    Text = $"  Uptie {group.level}: [{ids}]",
-                    Margin = new Thickness(15, 0, 0, 2)
-                });
-            }
+            // 没有匹配的渲染器，显示默认文本
+            AddTextToContent(data.ToString() ?? "（无数据）", Brushes.Black, 12,
+                new Thickness(0), true);
         }
 
         private TextBox CreateSelectableText(string text, bool isBold = false,
@@ -746,6 +401,27 @@ namespace LethelModHelper
             }
         }
 
+        /// <summary>
+        /// 渲染器保存数据的回调方法
+        /// </summary>
+        private void SaveRendererData(object data)
+        {
+            try
+            {
+                if (!TryGetCurrentFilePath(out var currentFilePath)) return;
+
+                _dataService.Save(currentFilePath, data);
+                FooterStatusTextBlock.Text = $"✅ 已保存: {Path.GetFileName(currentFilePath)}";
+                RefreshCurrentView();
+                MessageBox.Show("数据保存成功！", "提示",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                ShowError("保存失败", ex);
+            }
+        }
+
         private bool TryGetCurrentFilePath(out string currentFilePath)
         {
             currentFilePath = _currentFilePath ?? string.Empty;
@@ -801,16 +477,6 @@ namespace LethelModHelper
                 display += $"({string.Join(", ", part.Arguments)})";
             }
             return display;
-        }
-
-        private UIElement CreateScriptDisplayBlock(string rawScript, ParsedScript parsed)
-        {
-            var panel = new StackPanel { Margin = new Thickness(0, 2, 0, 2) };
-            panel.Children.Add(CreateSelectableText(
-                $"  📜 脚本: {rawScript}", false, Brushes.Gray, 11, 10));
-
-            DisplayParsedScript(parsed, panel, 15);
-            return panel;
         }
 
         private void DisplayParsedScript(ParsedScript? parsed, StackPanel container, double marginLeft)

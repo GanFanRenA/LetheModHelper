@@ -1,0 +1,132 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using LethelModHelper.Core.Models;
+
+namespace LethelModHelper.Services.Renderers
+{
+    public class PersonalityRenderer : IDataRenderer
+    {
+        private Action<object>? _saveCallback;
+        private static readonly Dictionary<int, string> SinnerNames = new()
+        {
+            { 1, "Yi Sang" }, { 2, "Faust" }, { 3, "Don Quixote" },
+            { 4, "Ryoshu" }, { 5, "Meursault" }, { 6, "Hong Lu" },
+            { 7, "Heathcliff" }, { 8, "Ishmael" }, { 9, "Rodion" },
+            { 10, "Sinclair" }, { 11, "Outis" }, { 12, "Gregor" }
+        };
+
+        public bool CanRender(object data)
+        {
+            return data is PersonalityData;
+        }
+
+        public void SetSaveCallback(Action<object> saveAction)
+        {
+            _saveCallback = saveAction;
+        }
+
+
+        public FrameworkElement Render(object data)
+        {
+            var personalityData = (PersonalityData)data;
+            var mainPanel = new StackPanel();
+
+            if (personalityData.list == null || personalityData.list.Count == 0)
+            {
+                mainPanel.Children.Add(CreateTextBlock("没有 Personality 数据", Brushes.Gray));
+                return mainPanel;
+            }
+
+            // 标题行
+            var headerPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Margin = new Thickness(0, 0, 0, 10)
+            };
+
+            headerPanel.Children.Add(CreateTextBlock(
+                $"共 {personalityData.list.Count} 个 Personality 条目",
+                Brushes.Black, 14));
+
+            // 保存按钮
+            var saveButton = new Button
+            {
+                Content = "💾 保存所有修改",
+                Margin = new Thickness(10, 0, 0, 0),
+                Padding = new Thickness(10, 5, 10, 5),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            // 保存功能需要在MainWindow中实现
+            saveButton.Click += (s, e) =>
+            {
+                if (_saveCallback != null)
+                {
+                    _saveCallback(data);
+                }
+                else
+                {
+                    MessageBox.Show("保存功能未初始化，请重新加载文件", "提示",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            };
+            headerPanel.Children.Add(saveButton);
+            mainPanel.Children.Add(headerPanel);
+
+            // 每个Personality条目
+            foreach (var entry in personalityData.list)
+            {
+                var expander = new Expander
+                {
+                    Header = $"ID: {entry.id} | 罪人: {GetSinnerName(entry.characterId)} | 星级: {GetStarText(entry.rank)}",
+                    IsExpanded = false,
+                    Margin = new Thickness(0, 5, 0, 5),
+                    Padding = new Thickness(10)
+                };
+
+                var contentStack = new StackPanel();
+                contentStack.Children.Add(EditorGenerator.GenerateEditor(entry));
+                expander.Content = contentStack;
+                mainPanel.Children.Add(expander);
+            }
+
+            return mainPanel;
+        }
+
+        #region 辅助方法
+
+        private TextBlock CreateTextBlock(string text, Brush foreground,
+            double fontSize = 12, Thickness? margin = null)
+        {
+            return new TextBlock
+            {
+                Text = text,
+                Foreground = foreground,
+                FontSize = fontSize,
+                Margin = margin ?? new Thickness(0)
+            };
+        }
+
+        private string GetSinnerName(int characterId)
+        {
+            return SinnerNames.TryGetValue(characterId, out var name)
+                ? name
+                : $"罪人 {characterId}";
+        }
+
+        private string GetStarText(int rank)
+        {
+            return rank switch
+            {
+                1 => "⭐ (1星)",
+                2 => "⭐⭐ (2星)",
+                3 => "⭐⭐⭐ (3星)",
+                _ => $"{rank}星"
+            };
+        }
+
+        #endregion
+    }
+}
