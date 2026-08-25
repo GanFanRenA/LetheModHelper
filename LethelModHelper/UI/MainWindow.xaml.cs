@@ -262,7 +262,7 @@ namespace LethelModHelper
             if (!TryGetValidParseResult(filePath, out var parseResult)) return;
 
             DisplayParseWarnings(parseResult.Warnings);
-            DisplayDataByType(parseResult.Data!);
+            DisplayDataByType(parseResult.Data!, filePath);
         }
 
         private void InitializeFileDisplayContext(string filePath)
@@ -314,11 +314,12 @@ namespace LethelModHelper
         /// 根据数据运行时类型分发到对应渲染流程。
         /// </summary>
         /// <param name="data">解析得到的数据对象。</param>
-        private void DisplayDataByType(object data)
+        /// <param name="filePath">当前文件路径。</param>
+        private void DisplayDataByType(object data, string filePath)
         {
             ContentPanel.Children.Clear();
 
-            var element = _rendererRegistry.Render(data,_currentFilePath!);
+            var element = _rendererRegistry.Render(data, filePath);
 
             if (element != null)
             {
