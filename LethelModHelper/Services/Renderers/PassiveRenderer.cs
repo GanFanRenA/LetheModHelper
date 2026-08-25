@@ -11,21 +11,21 @@ namespace LethelModHelper.Services.Renderers
     public class PassiveRenderer : IDataRenderer
     {
         private readonly ScriptParser _scriptParser = new();
-        private Action<object>? _saveCallback;
+        private RendererContext? _context;
 
         public bool CanRender(object data)
         {
             return data is PassiveData;
         }
 
-        public void SetSaveCallback(Action<object> saveAction)
+        public void SetContext(RendererContext context)
         {
-            _saveCallback = saveAction;
+            _context = context;
         }
 
       
 
-        public FrameworkElement Render(object data)
+        public FrameworkElement Render(object data, string filePath)
         {
             var passiveData = (PassiveData)data;
             var mainPanel = new StackPanel();

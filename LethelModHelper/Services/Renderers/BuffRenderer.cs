@@ -1,30 +1,31 @@
-﻿using System;
+﻿using LethelModHelper.Core.Models;
+using LethelModHelper.Services.Renderers;
+using LethelModHelper.Services.Renderers.Helpers;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using LethelModHelper.Core.Models;
-using LethelModHelper.Services.Renderers;
 
 namespace LethelModHelper.Services.Renderers
 {
     public class BuffRenderer : IDataRenderer
     {
         private readonly ScriptParser _scriptParser = new();
-        private Action<object>? _saveCallback;
+        private RendererContext? _context;
 
         public bool CanRender(object data)
         {
             return data is BuffData;
         }
-        
-        public void SetSaveCallback(Action<object> saveAction)
+
+        public void SetContext(RendererContext context)
         {
-            _saveCallback = saveAction;
+            _context = context;
         }
 
-        public FrameworkElement Render(object data)
+        public FrameworkElement Render(object data, string filePath)
         {
             var buffData = (BuffData)data;
             var mainPanel = new StackPanel();
@@ -37,7 +38,7 @@ namespace LethelModHelper.Services.Renderers
             }
 
             // === 标题行 ===
-            var headerPanel = CreateHeaderPanel(buffData);
+            var headerPanel = CreateHeaderPanel(buffData, filePath);
             mainPanel.Children.Add(headerPanel);
 
             // === 每个 Buff 条目 ===
@@ -52,7 +53,7 @@ namespace LethelModHelper.Services.Renderers
 
         #region 辅助方法
 
-        private StackPanel CreateHeaderPanel(BuffData data)
+        private StackPanel CreateHeaderPanel(BuffData data,string filePath)
         {
             var headerPanel = new StackPanel
             {
@@ -80,26 +81,8 @@ namespace LethelModHelper.Services.Renderers
             };
             headerPanel.Children.Add(saveLocaleButton);
 
-            // 保存所有修改按钮
-            var saveButton = new Button
-            {
-                Content = "💾 保存所有修改",
-                Margin = new Thickness(10, 0, 0, 0),
-                Padding = new Thickness(10, 5, 10, 5),
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            saveButton.Click += (s, e) =>
-            {
-                if (_saveCallback != null)
-                {
-                    _saveCallback(data);
-                }
-                else
-                {
-                    MessageBox.Show("保存功能未初始化，请重新加载文件", "提示",
-                        MessageBoxButton.OK, MessageBoxImage.Warning);
-                }
-            };
+            // 保存按钮
+            var saveButton = RendererUIHelper.CreateSaveButton(_context, data, filePath);
             headerPanel.Children.Add(saveButton);
 
             return headerPanel;

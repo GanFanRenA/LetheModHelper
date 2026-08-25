@@ -1,26 +1,27 @@
-﻿using System;
+﻿using LethelModHelper.Core.Models;
+using LethelModHelper.Services.Renderers.Helpers;
+using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using LethelModHelper.Core.Models;
 
 namespace LethelModHelper.Services.Renderers
 {
     public class AbnormalityRenderer : IDataRenderer
     {
-        private Action<object>? _saveCallback;
+        private RendererContext? _context;
         public bool CanRender(object data)
         {
             return data is AbnormalityData;
         }
 
-        public void SetSaveCallback(Action<object> saveAction)
+        public void SetContext(RendererContext context)
         {
-            _saveCallback = saveAction;
+            _context = context;
         }
 
-        public FrameworkElement Render(object data)
+        public FrameworkElement Render(object data,string filePath)
         {
             var abnormalityData = (AbnormalityData)data;
             var mainPanel = new StackPanel();
@@ -43,25 +44,7 @@ namespace LethelModHelper.Services.Renderers
                 Brushes.Black, 14));
 
             // 保存按钮
-            var saveButton = new Button
-            {
-                Content = "💾 保存所有修改",
-                Margin = new Thickness(10, 0, 0, 0),
-                Padding = new Thickness(10, 5, 10, 5),
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            saveButton.Click += (s, e) =>
-            {
-                if (_saveCallback != null)
-                {
-                    _saveCallback(data);
-                }
-                else
-                {
-                    MessageBox.Show("保存功能未初始化，请重新加载文件", "提示",
-                        MessageBoxButton.OK, MessageBoxImage.Warning);
-                }
-            };
+            var saveButton = RendererUIHelper.CreateSaveButton(_context, data,filePath);
             headerPanel.Children.Add(saveButton);
             mainPanel.Children.Add(headerPanel);
 

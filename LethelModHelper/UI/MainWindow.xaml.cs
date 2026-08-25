@@ -1,6 +1,7 @@
 using LethelModHelper.Core.Models;
 using LethelModHelper.Services;
 using LethelModHelper.Services.Renderers;
+using LethelModHelper.Services.Renderers.Helpers;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
@@ -24,7 +25,8 @@ namespace LethelModHelper
         private readonly FileService _fileService;
         private readonly LocaleService _localeService;
         private readonly ModDataService _dataService;
-        private readonly List<IDataRenderer> _renderers;
+        private readonly RendererContext _rendererContext;
+        private readonly RendererRegistry _rendererRegistry;
         private string? _currentFilePath;
         
 
@@ -52,18 +54,9 @@ namespace LethelModHelper
             _localeService = new LocaleService(_fileService);
             _dataService = new ModDataService(_fileService);
 
-            _renderers = new()
-            {
-                new PersonalityRenderer(),
-                new PassiveRenderer(),
-                new BuffRenderer(),
-                new AbnormalityRenderer()
-            };
+            _rendererContext = new RendererContext(_dataService);
+            _rendererRegistry = new RendererRegistry(_rendererContext);
 
-            foreach (var renderer in _renderers)
-            {
-                renderer.SetSaveCallback(SaveRendererData);
-            }
         }
 
         #endregion
@@ -321,41 +314,24 @@ namespace LethelModHelper
         /// <param name="data">解析得到的数据对象。</param>
         private void DisplayDataByType(object data)
         {
-            foreach (var renderer in _renderers)
+            ContentPanel.Children.Clear();
+
+            var element = _rendererRegistry.Render(data);
+
+            if (element != null)
             {
-                if (renderer.CanRender(data))
-                {
-                    var uiElement = renderer.Render(data);
-                    ContentPanel.Children.Clear();
-                    ContentPanel.Children.Add(uiElement);
-                    return;
-                }
+                ContentPanel.Children.Add(element);
             }
-
-            // 没有匹配的渲染器，显示默认文本
-            AddTextToContent(data.ToString() ?? "（无数据）", Brushes.Black, 12,
-                new Thickness(0), true);
-        }
-
-        private TextBox CreateSelectableText(string text, bool isBold = false,
-            Brush? foreground = null, double fontSize = 12,
-            double marginLeft = 0, double marginTop = 2)
-        {
-            return new TextBox
+            else
             {
-                Text = text,
-                IsReadOnly = true,
-                Background = Brushes.Transparent,
-                BorderThickness = new Thickness(0),
-                TextWrapping = TextWrapping.Wrap,
-                FontWeight = isBold ? FontWeights.Bold : FontWeights.Normal,
-                FontSize = fontSize,
-                Margin = new Thickness(marginLeft, marginTop, 0, 2),
-                Cursor = Cursors.IBeam,
-                IsTabStop = false,
-                Foreground = foreground ?? Brushes.Black,
-                IsReadOnlyCaretVisible = false
-            };
+                ContentPanel.Children.Add(
+                    new TextBlock
+                    {
+                        Text = $"暂不支持的数据类型: {data.GetType().Name}",
+                        Foreground = Brushes.Gray,
+                        Margin = new Thickness(10)
+                    });
+            }
         }
 
         private void AddTextToContent(string text, Brush foreground,
@@ -401,27 +377,6 @@ namespace LethelModHelper
             }
         }
 
-        /// <summary>
-        /// 渲染器保存数据的回调方法
-        /// </summary>
-        private void SaveRendererData(object data)
-        {
-            try
-            {
-                if (!TryGetCurrentFilePath(out var currentFilePath)) return;
-
-                _dataService.Save(currentFilePath, data);
-                FooterStatusTextBlock.Text = $"✅ 已保存: {Path.GetFileName(currentFilePath)}";
-                RefreshCurrentView();
-                MessageBox.Show("数据保存成功！", "提示",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                ShowError("保存失败", ex);
-            }
-        }
-
         private bool TryGetCurrentFilePath(out string currentFilePath)
         {
             currentFilePath = _currentFilePath ?? string.Empty;
@@ -454,61 +409,7 @@ namespace LethelModHelper
             };
         }
 
-        private Brush GetPartColor(string type)
-        {
-            return type.ToUpper() switch
-            {
-                "TIMING" => Brushes.Blue,
-                "LUA" => Brushes.Green,
-                "LUAMAIN" => Brushes.Purple,
-                "LOOP" => Brushes.Orange,
-                "VALUE" => Brushes.Brown,
-                "IF" => Brushes.Red,
-                "FUNCTION" => Brushes.DarkCyan,
-                _ => Brushes.Black
-            };
-        }
-
-        private string GetPartDisplayText(ScriptPart part)
-        {
-            var display = $"[{part.Type}] {part.Name}";
-            if (part.Arguments.Count > 0)
-            {
-                display += $"({string.Join(", ", part.Arguments)})";
-            }
-            return display;
-        }
-
-        private void DisplayParsedScript(ParsedScript? parsed, StackPanel container, double marginLeft)
-        {
-            if (parsed == null)
-            {
-                container.Children.Add(CreateSelectableText(
-                    "  (解析失败)", false, Brushes.Red, 11, marginLeft));
-                return;
-            }
-
-            if (!parsed.IsValid)
-            {
-                container.Children.Add(CreateSelectableText(
-                    $"  ⚠️ {parsed.ErrorMessage}", false, Brushes.Red, 11, marginLeft));
-                return;
-            }
-
-            if (parsed.Parts.Count == 0)
-            {
-                container.Children.Add(CreateSelectableText(
-                    "  (空脚本)", false, Brushes.Gray, 11, marginLeft));
-                return;
-            }
-
-            foreach (var part in parsed.Parts)
-            {
-                var color = GetPartColor(part.Type);
-                container.Children.Add(CreateSelectableText(
-                    $"  • {GetPartDisplayText(part)}", false, color, 11, marginLeft));
-            }
-        }
+        
 
         private void RefreshCurrentView()
         {
@@ -865,93 +766,6 @@ namespace LethelModHelper
                 System.Diagnostics.Debug.WriteLine($"❌ 刷新失败: {ex.Message}");
                 MessageBox.Show($"刷新失败: {ex.Message}", "错误",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-        }
-
-        #endregion
-
-        #region 脚本字段显示（保留原有功能）
-
-        private void DisplayScriptFields(object data, StackPanel container, int indent = 0)
-        {
-            if (data == null) return;
-
-            var type = data.GetType();
-            var properties = type.GetProperties();
-
-            foreach (var prop in properties)
-            {
-                var propValue = prop.GetValue(data);
-                if (propValue == null) continue;
-
-                var margin = new Thickness(indent * 15, 2, 0, 2);
-
-                if (prop.PropertyType == typeof(string) && ScriptFieldCache.HasScript(data, prop.Name))
-                {
-                    var parsed = ScriptFieldCache.Get(data, prop.Name);
-                    container.Children.Add(CreateSelectableText($"📜 {prop.Name}:", true, null, 12, margin.Left));
-                    DisplayParsedScript(parsed, container, margin.Left + 10);
-                }
-                else if (prop.PropertyType == typeof(List<string>))
-                {
-                    DisplayStringList(propValue, prop, data, container, margin);
-                }
-                else if (prop.PropertyType.IsClass && prop.PropertyType != typeof(string))
-                {
-                    DisplayNestedObject(propValue, prop.PropertyType, container, margin, indent);
-                }
-            }
-        }
-
-        private void DisplayStringList(object propValue, System.Reflection.PropertyInfo prop,
-            object data, StackPanel container, Thickness margin)
-        {
-            var key = $"{data.GetHashCode()}_{prop.Name}_LIST";
-            if (ScriptFieldCache.HasList(key))
-            {
-                var parsedList = ScriptFieldCache.GetList(key);
-                if (parsedList != null && parsedList.Count > 0)
-                {
-                    container.Children.Add(CreateSelectableText(
-                        $"📜 {prop.Name} ({parsedList.Count} 个脚本):", true, null, 12, margin.Left));
-
-                    for (int i = 0; i < parsedList.Count; i++)
-                    {
-                        container.Children.Add(CreateSelectableText($"  [{i}]", true, null, 11, margin.Left + 10));
-                        DisplayParsedScript(parsedList[i], container, margin.Left + 25);
-                    }
-                }
-            }
-            else if (propValue is System.Collections.IEnumerable list)
-            {
-                DisplayEnumerable(list, container, margin, 1);
-            }
-        }
-
-        private void DisplayNestedObject(object propValue, Type propType,
-            StackPanel container, Thickness margin, int indent)
-        {
-            if (propType.IsGenericType && propType.GetGenericTypeDefinition() == typeof(List<>))
-            {
-                if (propValue is System.Collections.IEnumerable list)
-                {
-                    DisplayEnumerable(list, container, margin, indent + 1);
-                }
-            }
-            else
-            {
-                DisplayScriptFields(propValue, container, indent);
-            }
-        }
-
-        private void DisplayEnumerable(System.Collections.IEnumerable list,
-            StackPanel container, Thickness margin, int indent)
-        {
-            int index = 0;
-            foreach (var item in list)
-            {
-                container.Children.Add(CreateSelectableText($"  [{index++}]", true, null, 11, margin.Left));
-                DisplayScriptFields(item, container, indent);
             }
         }
 

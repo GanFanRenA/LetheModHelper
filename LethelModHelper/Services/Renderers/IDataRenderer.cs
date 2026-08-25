@@ -6,8 +6,8 @@ namespace LethelModHelper.Services.Renderers
     {
         bool CanRender(object data);
 
-        FrameworkElement Render(object data);
+        FrameworkElement Render(object data, string filePath);
 
-        void SetSaveCallback(Action<object> saveAction);
+        void SetContext(RendererContext context);
     }
 }
