@@ -23,6 +23,7 @@ namespace LethelModHelper.Services
         {
             "custom_limbus_data"
         };
+        private readonly Dictionary<int, PersonalityPassiveEntry> _passiveEntryCache = new();
 
         public Dictionary<string, FileParseResult> ParsedFiles { get; } = new();
         public string CurrentModPath { get; private set; } = "";
@@ -61,12 +62,17 @@ namespace LethelModHelper.Services
             CurrentModPath = modPath;
             CurrentModPathStatic = modPath;
             ParsedFiles.Clear();
+            _passiveEntryCache.Clear();
 
             LoadBuffLocaleData(modPath);
             LoadKeywordLocaleData(modPath);
 
             ScanFolder(modPath);
+
+            BuildPassiveEntryCache();
         }
+
+
 
 
         private void ScanFolder(string folderPath)
@@ -128,6 +134,64 @@ namespace LethelModHelper.Services
             }
         }
 
+        /// <summary>
+        /// 建立 PersonalityPassive 索引
+        /// </summary>
+        private void BuildPassiveEntryCache()
+        {
+            _passiveEntryCache.Clear();
+
+            foreach (var kvp in ParsedFiles)
+            {
+                if (kvp.Value.Success && kvp.Value.Data != null)
+                {
+                    // 处理 PersonalityPassiveData
+                    if (kvp.Value.Data is PersonalityPassiveData passiveData)
+                    {
+                        if (passiveData.list != null)
+                        {
+                            foreach (var entry in passiveData.list)
+                            {
+                                if (!_passiveEntryCache.ContainsKey(entry.personalityID))
+                                {
+                                    _passiveEntryCache[entry.personalityID] = entry;
+                                    System.Diagnostics.Debug.WriteLine(
+                                        $"✅ 索引 PersonalityPassive: personalityID={entry.personalityID}, " +
+                                        $"战斗被动组数={entry.battlePassiveList?.Count ?? 0}, " +
+                                        $"支援被动组数={entry.supporterPassiveList?.Count ?? 0}");
+
+                                    // 打印详细调试信息
+                                    if (entry.battlePassiveList != null)
+                                    {
+                                        foreach (var group in entry.battlePassiveList)
+                                        {
+                                            System.Diagnostics.Debug.WriteLine(
+                                                $"  战斗被动: level={group.level}, IDs=[{string.Join(",", group.passiveIDList ?? new List<int>())}]");
+                                        }
+                                    }
+                                    if (entry.supporterPassiveList != null)
+                                    {
+                                        foreach (var group in entry.supporterPassiveList)
+                                        {
+                                            System.Diagnostics.Debug.WriteLine(
+                                                $"  支援被动: level={group.level}, IDs=[{string.Join(",", group.passiveIDList ?? new List<int>())}]");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine($"📊 总共索引了 {_passiveEntryCache.Count} 个 PersonalityPassive 条目");
+        }
+
+        public PersonalityPassiveEntry? GetPassiveEntryByPersonalityId(int personalityId)
+        {
+            _passiveEntryCache.TryGetValue(personalityId, out var entry);
+            return entry;
+        }
         private bool IsSupportedFile(string filePath)
         {
             var extension = Path.GetExtension(filePath).ToLower();

@@ -113,6 +113,7 @@ namespace LethelModHelper
             Dispatcher.Invoke(() => FooterStatusTextBlock.Text = $"⚠️ {errorMessage}");
         }
 
+
         private void FileTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
             if (e.NewValue is TreeViewItem { Tag: string filePath } && _fileService.Exists(filePath))
@@ -423,14 +424,75 @@ namespace LethelModHelper
         private void RefreshMod()
         {
             _scanner.OpenMod(_scanner.CurrentModPath);
+
+            // ===== 在刷新完成后建立关联 =====
+            LinkAllPersonalityPassiveData();
+
             UpdateFileTree();
             FooterStatusTextBlock.Text = $"刷新完成，共解析 {_scanner.ParsedFiles.Count} 个文件";
         }
 
+        private void LinkAllPersonalityPassiveData()
+        {
+            System.Diagnostics.Debug.WriteLine("🔄 开始关联 Personality 和 PersonalityPassive 数据...");
+
+            foreach (var kvp in _scanner.ParsedFiles)
+            {
+                if (kvp.Value.Success && kvp.Value.Data is PersonalityData personalityData)
+                {
+                    LinkPersonalityPassiveData(personalityData);
+                }
+            }
+        }
+        private void LinkPersonalityPassiveData(PersonalityData personalityData)
+        {
+            if (personalityData.list == null) return;
+
+            foreach (var entry in personalityData.list)
+            {
+                // 使用 ModScanner 的索引查找
+                var passiveEntry = _scanner.GetPassiveEntryByPersonalityId(entry.id);
+                if (passiveEntry != null)
+                {
+                    entry.LinkedPassiveEntry = passiveEntry;
+
+                    // 查找文件路径
+                    foreach (var kvp in _scanner.ParsedFiles)
+                    {
+                        if (kvp.Value.Success && kvp.Value.Data is PersonalityPassiveData passiveData)
+                        {
+                            if (passiveData.list?.Any(p => p.personalityID == entry.id) == true)
+                            {
+                                entry.PassiveFilePath = kvp.Key;
+                                break;
+                            }
+                        }
+                    }
+
+                    System.Diagnostics.Debug.WriteLine(
+                        $"✅ 关联 Personality {entry.id} → PersonalityPassive " +
+                        $"(战斗组: {passiveEntry.battlePassiveList?.Count ?? 0}, " +
+                        $"支援组: {passiveEntry.supporterPassiveList?.Count ?? 0})");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"⚠️ Personality {entry.id} 没有对应的 PersonalityPassive 数据");
+                    entry.LinkedPassiveEntry = null;
+                }
+            }
+        }
         private void UpdateStatusAfterLoad(string modPath)
         {
             StatusTextBlock.Text = $"已加载: {modPath}";
             FooterStatusTextBlock.Text = $"加载完成，共解析 {_scanner.ParsedFiles.Count} 个文件";
+
+            LinkAllPersonalityPassiveData();
+
+            // ===== 如果当前有选中的文件，刷新显示 =====
+            if (!string.IsNullOrEmpty(_currentFilePath))
+            {
+                DisplayFileContent(_currentFilePath);
+            }
         }
 
         private void ShowError(string title, Exception ex)
