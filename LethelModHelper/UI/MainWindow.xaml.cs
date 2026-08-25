@@ -19,8 +19,7 @@ namespace LethelModHelper
     {
         #region 字段和属性
 
-        private ModScanner _scanner;
-        private ScriptParser _scriptParser = new();
+        private readonly ModScanner _scanner;
         private readonly ModSession _modSession = new();
         private readonly FileService _fileService;
         private readonly LocaleService _localeService;
@@ -72,7 +71,6 @@ namespace LethelModHelper
 
             try
             {
-                _modSession.ClearFileData();
                 _scanner.OpenMod(dialog.FolderName);
                 UpdateFileTree();
                 UpdateStatusAfterLoad(dialog.FolderName);

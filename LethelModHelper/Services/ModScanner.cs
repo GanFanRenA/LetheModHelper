@@ -11,6 +11,13 @@ namespace LethelModHelper.Services
     {
         private readonly List<IFileHandler> _handlers = new();
 
+        private static string? _currentModPathStatic;
+        public static string? CurrentModPathStatic
+        {
+            get => _currentModPathStatic;
+            private set => _currentModPathStatic = value;
+        }
+
         // 需要跳过的文件夹（只作为容器，不匹配任何 Handler）
         private readonly List<string> _skipFolders = new()
         {
@@ -52,6 +59,7 @@ namespace LethelModHelper.Services
             }
 
             CurrentModPath = modPath;
+            CurrentModPathStatic = modPath;
             ParsedFiles.Clear();
 
             LoadBuffLocaleData(modPath);

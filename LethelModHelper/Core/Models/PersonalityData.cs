@@ -75,6 +75,20 @@ namespace LethelModHelper.Core.Models
         // ===== 技能列表 =====
         public List<SkillSlot> attributeList { get; set; } = new();
 
+        // ===== 新增：被动管理（用于 UI 编辑）=====
+        [Editable(Label = "战斗被动", ControlType = "List", Order = 8, AllowAddRemove = true)]
+        public List<PassiveGroupDisplay> BattlePassives { get; set; } = new();
+
+        [Editable(Label = "支援被动", ControlType = "List", Order = 9, AllowAddRemove = true)]
+        public List<PassiveGroupDisplay> SupporterPassives { get; set; } = new();
+
+        // ===== 引用关联的 personality_passive 数据（运行时填充）=====
+        [System.Text.Json.Serialization.JsonIgnore]
+        public PersonalityPassiveEntry? LinkedPassiveEntry { get; set; }
+
+        [System.Text.Json.Serialization.JsonIgnore]
+        public string PassiveFilePath { get; set; } = "";
+
         // ===== 可选：脚本ID (一般不用) =====
         public string unitScriptID { get; set; } = "";
     }
@@ -145,5 +159,12 @@ namespace LethelModHelper.Core.Models
         {
             return $"Skill: {skillId} × {number}";
         }
+    }
+
+    public class PassiveGroupDisplay
+    {
+        public int level { get; set; }
+
+        public List<int> passiveIDList { get; set; } = new();
     }
 }

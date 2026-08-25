@@ -23,4 +23,9 @@ namespace LethelModHelper.Core.Models
         public int level { get; set; }
         public List<int> passiveIDList { get; set; } = new();
     }
+
+    public class PersonalityPassiveEntryWithPath : PersonalityPassiveEntry
+    {
+        public string SourceFilePath { get; set; } = "";
+    }
 }
