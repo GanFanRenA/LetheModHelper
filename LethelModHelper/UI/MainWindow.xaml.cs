@@ -20,8 +20,8 @@ namespace LethelModHelper
         #region 字段和属性
 
         private ModScanner _scanner;
-        private Dictionary<string, object> _fileDataMap = new();
         private ScriptParser _scriptParser = new();
+        private readonly ModSession _modSession = new();
         private readonly FileService _fileService;
         private readonly LocaleService _localeService;
         private readonly ModDataService _dataService;
@@ -50,6 +50,8 @@ namespace LethelModHelper
             _scanner.FileParsed += OnFileParsed;
             _scanner.FileParseFailed += OnFileParseFailed;
 
+            _modSession = new ModSession();
+
             _fileService = new FileService();
             _localeService = new LocaleService(_fileService);
             _dataService = new ModDataService(_fileService);
@@ -70,6 +72,7 @@ namespace LethelModHelper
 
             try
             {
+                _modSession.ClearFileData();
                 _scanner.OpenMod(dialog.FolderName);
                 UpdateFileTree();
                 UpdateStatusAfterLoad(dialog.FolderName);
@@ -103,7 +106,7 @@ namespace LethelModHelper
             if (_scanner.ParsedFiles.TryGetValue(filePath, out var result) &&
                 result.Success && result.Data != null)
             {
-                _fileDataMap[filePath] = result.Data;
+                _modSession.SetFileData(filePath, result.Data);
             }
         }
 
@@ -316,7 +319,7 @@ namespace LethelModHelper
         {
             ContentPanel.Children.Clear();
 
-            var element = _rendererRegistry.Render(data);
+            var element = _rendererRegistry.Render(data,_currentFilePath!);
 
             if (element != null)
             {
@@ -544,7 +547,8 @@ namespace LethelModHelper
                 Path.Combine(modPath, "custom_limbus_locale", "EN", "keywordList"),
                 fileName, typeof(KeywordLocaleEntry));
 
-            _fileDataMap.Remove(filePath);
+            _modSession.RemoveFileData(filePath);
+
             LocaleCache.BuffLocaleMap.Remove(fileName);
             LocaleCache.KeywordLocaleMap.Remove(fileName);
         }

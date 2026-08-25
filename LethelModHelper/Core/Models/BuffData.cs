@@ -26,13 +26,13 @@ namespace LethelModHelper.Core.Models
             get => _id;
             set
             {
+                var oldId = _id;
                 _id = value;
-                // ===== 当 ID 修改时，自动同步 iconId =====
-                if (string.IsNullOrEmpty(_iconId) || _iconId == _id)
+                // 只有在 iconId 为空或与旧 ID 相同时才同步
+                if (string.IsNullOrEmpty(_iconId) || _iconId == oldId)
                 {
                     _iconId = value;
                 }
-                // ========================================
             }
         }
 

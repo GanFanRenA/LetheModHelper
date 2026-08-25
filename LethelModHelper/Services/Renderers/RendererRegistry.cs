@@ -24,12 +24,12 @@ namespace LethelModHelper.Services.Renderers
             }
         }
 
-        public FrameworkElement? Render(object data)
+        public FrameworkElement? Render(object data, string filePath)
         {
             var renderer = _renderers
                 .FirstOrDefault(r => r.CanRender(data));
 
-            return renderer?.Render(data, "filePath");
+            return renderer?.Render(data, filePath);
         }
     }
 }
