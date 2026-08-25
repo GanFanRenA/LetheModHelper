@@ -66,61 +66,50 @@ namespace LethelModHelper.Services
                 return editor.Create(dataObject, prop, attr, depth);
             }
 
+            // ===== 处理 Numeric 类型 =====
             if (attr.ControlType == "Numeric")
             {
                 var editor = new NumericEditor();
                 return editor.Create(dataObject, prop, attr, depth);
             }
 
-            // ===== 处理 List 类型 =====
+            // ===== 处理 Boolean 类型 =====
+            if (attr.ControlType == "Boolean")
+            {
+                var editor = new BooleanEditor();
+                return editor.Create(dataObject, prop, attr, depth);
+            }
+
+            // ===== 处理 Dropdown 类型 =====
+            if (attr.ControlType == "Dropdown")
+            {
+                var editor = new DropdownEditor();
+                return editor.Create(dataObject, prop, attr, depth);
+            }
+
+            // ===== 处理 Text 类型 =====
+            if (attr.ControlType == "Text")
+            {
+                var editor = new TextEditor();
+                return editor.Create(dataObject, prop, attr, depth);
+            }
+
+            // ===== 处理 List 类型（委托给新编辑器） =====
             if (prop.PropertyType.IsGenericType &&
                 prop.PropertyType.GetGenericTypeDefinition() == typeof(List<>))
             {
-                return CreateListField(label, dataObject, prop, attr, safeValue, depth);
+                var editor = new ListEditor();
+                return editor.Create(dataObject, prop, attr, depth);
             }
 
-            // ===== 处理嵌套对象 (Nested) =====
+            // ===== 再判断 Nested 类型（放在 List 之后） =====
             if (attr.ControlType == "Nested" ||
                 (prop.PropertyType.IsClass && prop.PropertyType != typeof(string) && !prop.PropertyType.IsValueType))
             {
-                // 创建嵌套面板
-                var border = new Border
-                {
-                    BorderBrush = Brushes.LightGray,
-                    BorderThickness = new Thickness(1),
-                    CornerRadius = new CornerRadius(4),
-                    Margin = new Thickness(depth * 15, 5, 0, 5),
-                    Padding = new Thickness(8)
-                };
-
-                var stack = new StackPanel();
-                stack.Children.Add(new TextBlock
-                {
-                    Text = $"📁 {label}:",
-                    FontWeight = FontWeights.Bold,
-                    FontSize = 12,
-                    Margin = new Thickness(0, 0, 0, 5)
-                });
-
-                // 递归生成嵌套对象的编辑界面
-                var nestedEditor = GenerateEditor(safeValue, depth + 1);
-                stack.Children.Add(nestedEditor);
-
-                border.Child = stack;
-                return border;
+                var editor = new NestedEditor(null!);
+                return editor.Create(dataObject, prop, attr, depth);
             }
-
-            // ===== 其他控件类型 =====
-            switch (attr.ControlType.ToLower())
-            {
-                case "boolean":
-                    return CreateBooleanField(label, dataObject, prop, safeValue);
-                case "dropdown":
-                    return CreateDropdownField(label, dataObject, prop, attr, safeValue);
-                case "text":
-                default:
-                    return CreateTextField(label, dataObject, prop, safeValue);
-            }
+            return null!;
         }
 
         /// <summary>
@@ -145,457 +134,6 @@ namespace LethelModHelper.Services
                 return Activator.CreateInstance(type);
             }
             return null;
-        }
-
-        private static UIElement CreateListField(string label, object dataObject, PropertyInfo prop,
-            EditableAttribute attr, object currentValue, int depth)
-        {
-            var border = new Border
-            {
-                BorderBrush = Brushes.LightGray,
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(4),
-                Margin = new Thickness(depth * 15, 5, 0, 5),
-                Padding = new Thickness(8)
-            };
-
-            var stack = new StackPanel();
-            stack.Children.Add(new TextBlock
-            {
-                Text = $"📋 {label}:",
-                FontWeight = FontWeights.Bold,
-                FontSize = 12,
-                Margin = new Thickness(0, 0, 0, 5)
-            });
-
-            var list = prop.GetValue(dataObject) as System.Collections.IList;
-            var elementType = prop.PropertyType.GetGenericArguments().FirstOrDefault();
-
-            if (list == null || list.Count == 0)
-            {
-                stack.Children.Add(new TextBlock
-                {
-                    Text = "  (空)",
-                    Foreground = Brushes.Gray,
-                    FontSize = 11,
-                    Margin = new Thickness(0, 2, 0, 2)
-                });
-            }
-            else
-            {
-                for (int i = 0; i < list.Count; i++)
-                {
-                    var item = list[i];
-                    var itemPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(5, 2, 0, 2) };
-
-                    // ===== 显示索引 =====
-                    itemPanel.Children.Add(new TextBlock
-                    {
-                        Text = $"{i + 1}. ",
-                        FontSize = 11,
-                        VerticalAlignment = VerticalAlignment.Center,
-                        Margin = new Thickness(0, 0, 5, 0),
-                        Foreground = Brushes.Gray
-                    });
-
-                    // ===== 根据元素类型创建编辑控件 =====
-                    if (elementType == typeof(int))
-                    {
-                        var box = new TextBox
-                        {
-                            Text = item?.ToString() ?? "0",
-                            Width = 60,
-                            VerticalAlignment = VerticalAlignment.Center,
-                            Background = Brushes.White,
-                            BorderBrush = Brushes.LightGray,
-                            BorderThickness = new Thickness(1),
-                            TextAlignment = TextAlignment.Center
-                        };
-                        int idx = i;
-                        var listRef = list;
-                        box.TextChanged += (s, e) =>
-                        {
-                            if (int.TryParse(box.Text, out int newValue))
-                            {
-                                listRef[idx] = newValue;
-                                box.Background = Brushes.LightYellow;
-                            }
-                            else
-                            {
-                                box.Background = Brushes.LightPink;
-                            }
-                        };
-                        itemPanel.Children.Add(box);
-                    }
-                    else if (elementType == typeof(double))
-                    {
-                        var box = new TextBox
-                        {
-                            Text = item?.ToString() ?? "0",
-                            Width = 60,
-                            VerticalAlignment = VerticalAlignment.Center,
-                            Background = Brushes.White,
-                            BorderBrush = Brushes.LightGray,
-                            BorderThickness = new Thickness(1),
-                            TextAlignment = TextAlignment.Center
-                        };
-                        int idx = i;
-                        var listRef = list;
-                        box.TextChanged += (s, e) =>
-                        {
-                            if (double.TryParse(box.Text, out double newValue))
-                            {
-                                listRef[idx] = newValue;
-                                box.Background = Brushes.LightYellow;
-                            }
-                            else
-                            {
-                                box.Background = Brushes.LightPink;
-                            }
-                        };
-                        itemPanel.Children.Add(box);
-                    }
-                    else if (elementType == typeof(string))
-                    {
-                        var box = new TextBox
-                        {
-                            Text = item?.ToString() ?? "",
-                            Width = 150,
-                            VerticalAlignment = VerticalAlignment.Center,
-                            Background = Brushes.White,
-                            BorderBrush = Brushes.LightGray,
-                            BorderThickness = new Thickness(1)
-                        };
-                        int idx = i;
-                        var listRef = list;
-                        box.TextChanged += (s, e) =>
-                        {
-                            listRef[idx] = box.Text;
-                            box.Background = Brushes.LightYellow;
-                        };
-                        itemPanel.Children.Add(box);
-                    }
-                    else if (elementType == typeof(ResistEntry))
-                    {
-                        var resist = item as ResistEntry;
-                        if (resist == null) continue;
-
-                        itemPanel.Children.Add(new TextBlock
-                        {
-                            Text = $"{resist.type}: ",
-                            FontSize = 11,
-                            VerticalAlignment = VerticalAlignment.Center,
-                            Margin = new Thickness(0, 0, 5, 0),
-                            Foreground = Brushes.DarkBlue
-                        });
-
-                        var valueBox = new TextBox
-                        {
-                            Text = resist.value.ToString(),
-                            Width = 50,
-                            VerticalAlignment = VerticalAlignment.Center,
-                            Background = Brushes.White,
-                            BorderBrush = Brushes.LightGray,
-                            BorderThickness = new Thickness(1),
-                            TextAlignment = TextAlignment.Center
-                        };
-                        valueBox.TextChanged += (s, e) =>
-                        {
-                            if (double.TryParse(valueBox.Text, out double newValue))
-                            {
-                                resist.value = newValue;
-                                valueBox.Background = Brushes.LightYellow;
-                            }
-                            else
-                            {
-                                valueBox.Background = Brushes.LightPink;
-                            }
-                        };
-                        itemPanel.Children.Add(valueBox);
-                    }
-                    else if (elementType == typeof(SkillSlot))
-                    {
-                        var slot = item as SkillSlot;
-                        if (slot == null) continue;
-
-                        // 显示索引
-                        itemPanel.Children.Add(new TextBlock
-                        {
-                            Text = $"[{i}]: ",
-                            FontSize = 11,
-                            VerticalAlignment = VerticalAlignment.Center,
-                            Margin = new Thickness(0, 0, 5, 0)
-                        });
-
-                        // skillId 输入框
-                        var idBox = new TextBox
-                        {
-                            Text = slot.skillId.ToString(),
-                            Width = 80,
-                            VerticalAlignment = VerticalAlignment.Center,
-                            Background = Brushes.White,
-                            BorderBrush = Brushes.LightGray,
-                            BorderThickness = new Thickness(1),
-                            TextAlignment = TextAlignment.Center,
-                            Margin = new Thickness(0, 0, 5, 0)
-                        };
-                        int idx = i;
-                        var listRef = list;
-                        idBox.TextChanged += (s, e) =>
-                        {
-                            if (int.TryParse(idBox.Text, out int newId))
-                            {
-                                var currentSlot = listRef[idx] as SkillSlot;
-                                if (currentSlot != null)
-                                {
-                                    currentSlot.skillId = newId;
-                                    idBox.Background = Brushes.LightYellow;
-                                }
-                            }
-                            else
-                            {
-                                idBox.Background = Brushes.LightPink;
-                            }
-                        };
-                        itemPanel.Children.Add(idBox);
-
-                        // "×" 分隔符
-                        itemPanel.Children.Add(new TextBlock
-                        {
-                            Text = " × ",
-                            FontSize = 11,
-                            VerticalAlignment = VerticalAlignment.Center,
-                            Margin = new Thickness(0, 0, 5, 0)
-                        });
-
-                        // number 输入框
-                        var numBox = new TextBox
-                        {
-                            Text = slot.number.ToString(),
-                            Width = 60,
-                            VerticalAlignment = VerticalAlignment.Center,
-                            Background = Brushes.White,
-                            BorderBrush = Brushes.LightGray,
-                            BorderThickness = new Thickness(1),
-                            TextAlignment = TextAlignment.Center,
-                            Margin = new Thickness(0, 0, 5, 0)
-                        };
-                        int numIdx = i;
-                        numBox.TextChanged += (s, e) =>
-                        {
-                            if (int.TryParse(numBox.Text, out int newNum))
-                            {
-                                var currentSlot = listRef[numIdx] as SkillSlot;
-                                if (currentSlot != null)
-                                {
-                                    currentSlot.number = newNum;
-                                    numBox.Background = Brushes.LightYellow;
-                                }
-                            }
-                            else
-                            {
-                                numBox.Background = Brushes.LightPink;
-                            }
-                        };
-                        itemPanel.Children.Add(numBox);
-                    }// ===== 处理 Pattern 类型 =====
-                    else if (elementType == typeof(Pattern))
-                    {
-                        RenderPatternItem(itemPanel, item, list, i, attr, depth, dataObject, stack, prop);
-                    }
-                    else
-                    {
-                        // ===== 检查是否是自定义类（需要递归展开） =====
-                        if (elementType != null && elementType.IsClass && elementType != typeof(string) && !elementType.IsValueType && item != null)
-                        {
-                            var hasEditableProps = elementType.GetProperties()
-                                .Any(p => p.GetCustomAttribute<EditableAttribute>() != null);
-
-                            if (hasEditableProps)
-                            {
-                                var expander = new Expander
-                                {
-                                    Header = item.ToString(),
-                                    IsExpanded = false,
-                                    Margin = new Thickness(0, 2, 0, 2)
-                                };
-
-                                var nestedEditor = GenerateEditor(item, depth + 1);
-                                expander.Content = nestedEditor;
-
-                                var itemBorder = new Border
-                                {
-                                    BorderBrush = Brushes.LightGray,
-                                    BorderThickness = new Thickness(1),
-                                    CornerRadius = new CornerRadius(4),
-                                    Margin = new Thickness(5, 2, 0, 2),
-                                    Padding = new Thickness(5),
-                                    Child = expander
-                                };
-                                itemPanel.Children.Add(itemBorder);
-
-                                if (attr.AllowAddRemove)
-                                {
-                                    var deleteBtn = new Button
-                                    {
-                                        Content = "✕",
-                                        Width = 24,
-                                        Height = 24,
-                                        FontSize = 10,
-                                        Padding = new Thickness(2),
-                                        ToolTip = "删除此项",
-                                        Margin = new Thickness(5, 0, 0, 0),
-                                        Background = Brushes.LightPink,
-                                        BorderBrush = Brushes.Gray,
-                                        BorderThickness = new Thickness(1)
-                                    };
-                                    int deleteIdx = i;
-                                    deleteBtn.Click += (s, e) =>
-                                    {
-                                        if (list.Count > deleteIdx)
-                                        {
-                                            list.RemoveAt(deleteIdx);
-                                            RebuildListField(stack, dataObject, prop, attr, depth);
-                                        }
-                                    };
-                                    itemPanel.Children.Add(deleteBtn);
-                                }
-
-                                stack.Children.Add(itemPanel);
-                                continue;
-                            }
-                        }
-                        // =============================================
-
-                        // 其他复杂对象，只显示 ToString
-                        itemPanel.Children.Add(new TextBlock
-                        {
-                            Text = item?.ToString() ?? "null",
-                            FontSize = 11,
-                            Foreground = Brushes.Gray
-                        });
-                        stack.Children.Add(itemPanel);
-                    }
-
-                    // ===== 重置按钮 =====
-                    var resetBtn = new Button
-                    {
-                        Content = "↩️",
-                        Width = 24,
-                        Height = 24,
-                        FontSize = 10,
-                        Padding = new Thickness(2),
-                        ToolTip = "重置此项",
-                        Margin = new Thickness(5, 0, 0, 0)
-                    };
-                    int resetIdx = i;
-                    var resetList = list;
-                    resetBtn.Click += (s, e) =>
-                    {
-                        if (elementType == typeof(int))
-                        {
-                            resetList[resetIdx] = 0;
-                        }
-                        else if (elementType == typeof(double))
-                        {
-                            resetList[resetIdx] = 0.0;
-                        }
-                        else if (elementType == typeof(string))
-                        {
-                            resetList[resetIdx] = "";
-                        }
-                        else if (elementType == typeof(ResistEntry))
-                        {
-                            var resist = resetList[resetIdx] as ResistEntry;
-                            if (resist != null)
-                            {
-                                resist.value = 1;
-                            }
-                        }
-                        // 刷新显示
-                        RebuildListField(stack, dataObject, prop, attr, depth);
-                    };
-                    itemPanel.Children.Add(resetBtn);
-
-                    // ===== 删除按钮（仅当 AllowAddRemove = true） =====
-                    if (attr.AllowAddRemove)
-                    {
-                        var deleteBtn = new Button
-                        {
-                            Content = "✕",
-                            Width = 24,
-                            Height = 24,
-                            FontSize = 10,
-                            Padding = new Thickness(2),
-                            ToolTip = "删除此项",
-                            Margin = new Thickness(2, 0, 0, 0),
-                            Background = Brushes.LightPink,
-                            BorderBrush = Brushes.Gray,
-                            BorderThickness = new Thickness(1)
-                        };
-                        int deleteIdx = i;
-                        deleteBtn.Click += (s, e) =>
-                        {
-                            if (list.Count > deleteIdx)
-                            {
-                                list.RemoveAt(deleteIdx);
-                                RebuildListField(stack, dataObject, prop, attr, depth);
-                            }
-                        };
-                        itemPanel.Children.Add(deleteBtn);
-                    }
-
-                    stack.Children.Add(itemPanel);
-                }
-            }
-
-            // ===== 添加按钮（仅当 AllowAddRemove = true 且列表不为空或允许空列表） =====
-            if (attr.AllowAddRemove)
-            {
-                var addPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(5, 5, 0, 5) };
-                var addBtn = new Button
-                {
-                    Content = "➕ 添加",
-                    Width = 80,
-                    Height = 28,
-                    FontSize = 11,
-                    Padding = new Thickness(5, 2, 5, 2),
-                    Background = Brushes.LightGreen,
-                    BorderBrush = Brushes.Gray,
-                    BorderThickness = new Thickness(1)
-                };
-                addBtn.Click += (s, e) =>
-                {
-                    if (elementType != null)
-                    {
-                        var newItem = CreateDefaultListItem(elementType);
-                        if (newItem == null)
-                        {
-                            MessageBox.Show($"无法为类型 {elementType.Name} 创建默认项，请确认该类型有无参构造函数。", "添加失败", MessageBoxButton.OK, MessageBoxImage.Warning);
-                            return;
-                        }
-                        list.Add(newItem);
-                        RebuildListField(stack, dataObject, prop, attr, depth);
-                    }
-                };
-                addPanel.Children.Add(addBtn);
-                stack.Children.Add(addPanel);
-            }
-
-            // ===== 提示信息 =====
-            var hintText = attr.AllowAddRemove
-                ? "💡 点击 ✕ 删除，点击 ➕ 添加"
-                : "💡 修改数值即可更新";
-            stack.Children.Add(new TextBlock
-            {
-                Text = hintText,
-                Foreground = Brushes.Gray,
-                FontSize = 10,
-                Margin = new Thickness(0, 2, 0, 0)
-            });
-
-            border.Child = stack;
-            return border;
         }
 
         /// <summary>
@@ -718,137 +256,6 @@ namespace LethelModHelper.Services
                 EditResistEntry(resist, index, parentPanel);
             };
             parentPanel.Children.Add(editBtn);
-        }
-
-
-        private static UIElement CreateBooleanField(string label, object dataObject, PropertyInfo prop, object currentValue)
-        {
-            var panel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 2) };
-
-            panel.Children.Add(CreateLabel($"{label}: "));
-
-            var checkBox = new CheckBox
-            {
-                IsChecked = (bool?)currentValue ?? false,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(5, 0, 0, 0)
-            };
-            checkBox.Checked += (s, e) => prop.SetValue(dataObject, true);
-            checkBox.Unchecked += (s, e) => prop.SetValue(dataObject, false);
-            panel.Children.Add(checkBox);
-
-            return panel;
-        }
-
-        private static UIElement CreateDropdownField(string label, object dataObject, PropertyInfo prop,
-            EditableAttribute attr, object currentValue)
-        {
-            var panel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 2) };
-
-            panel.Children.Add(CreateLabel($"{label}: "));
-
-            var comboBox = new ComboBox
-            {
-                Width = 150,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(5, 0, 0, 0)
-            };
-
-            var options = new List<string>();
-            if (!string.IsNullOrEmpty(attr.Options))
-            {
-                options = attr.Options.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
-                                      .Select(o => o.Trim())
-                                      .ToList();
-            }
-
-            comboBox.Items.Add("无");
-
-            foreach (var option in options)
-            {
-                comboBox.Items.Add(option);
-            }
-
-            // 设置选中项
-            if (currentValue != null)
-            {
-                var currentStr = currentValue.ToString();
-                if (!string.IsNullOrEmpty(currentStr) && options.Contains(currentStr))
-                {
-                    comboBox.SelectedItem = currentStr;
-                }
-                else if (int.TryParse(currentStr, out int intValue))
-                {
-                    var matchingOption = options.FirstOrDefault(o => o.StartsWith($"{intValue}-"));
-                    comboBox.SelectedItem = matchingOption ?? "无";
-                }
-                else
-                {
-                    comboBox.SelectedItem = "无";
-                }
-            }
-
-            comboBox.SelectionChanged += (s, e) =>
-            {
-                if (comboBox.SelectedItem == null || comboBox.SelectedItem.ToString() == "无")
-                {
-                    prop.SetValue(dataObject, prop.PropertyType == typeof(int) ? 0 : "");
-                    return;
-                }
-
-                var selectedValue = comboBox.SelectedItem.ToString();
-
-                if (prop.PropertyType == typeof(int))
-                {
-                    var match = System.Text.RegularExpressions.Regex.Match(selectedValue, @"^(\d+)-");
-                    if (match.Success && int.TryParse(match.Groups[1].Value, out int intValue))
-                    {
-                        prop.SetValue(dataObject, intValue);
-                    }
-                    else if (int.TryParse(selectedValue, out int intValue2))
-                    {
-                        prop.SetValue(dataObject, intValue2);
-                    }
-                    else
-                    {
-                        prop.SetValue(dataObject, 0);
-                    }
-                }
-                else
-                {
-                    prop.SetValue(dataObject, selectedValue);
-                }
-            };
-
-            panel.Children.Add(comboBox);
-            return panel;
-        }
-
-        private static UIElement CreateTextField(string label, object dataObject, PropertyInfo prop, object currentValue)
-        {
-            var panel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 2) };
-
-            panel.Children.Add(CreateLabel($"{label}: "));
-
-            var box = new TextBox
-            {
-                Text = currentValue?.ToString() ?? "",
-                Width = 200,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(5, 0, 0, 0),
-                Background = Brushes.White,
-                BorderBrush = Brushes.LightGray,
-                BorderThickness = new Thickness(1)
-            };
-
-            box.TextChanged += (s, e) =>
-            {
-                prop.SetValue(dataObject, box.Text);
-                box.Background = Brushes.LightYellow;
-            };
-            panel.Children.Add(box);
-
-            return panel;
         }
 
         private static UIElement CreateScriptDisplay(string fieldName, ParsedScript? parsed)
@@ -1388,15 +795,6 @@ namespace LethelModHelper.Services
                 Margin = new Thickness(0, 2, 0, 0)
             });
         }
-        /// <summary>
-        /// 渲染 Pattern 列表项（只显示模式编号）
-        /// </summary>
-        /// <summary>
-        /// 渲染 Pattern 列表项（只显示模式编号）
-        /// </summary>
-        /// <summary>
-        /// 渲染 Pattern 列表项（只显示模式编号）
-        /// </summary>
         /// <summary>
         /// 渲染 Pattern 列表项（只显示模式编号）
         /// </summary>
